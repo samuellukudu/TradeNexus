@@ -1,0 +1,5 @@
+{
+  "name": "TradeNexus AI Sales Agent",
+  "description": "An autonomous AI sales agent that sources international clients for Chinese suppliers. It handles lead generation, negotiation simulation, and transparency logging.",
+  "requestFramePermissions": []
+}

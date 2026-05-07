@@ -1,0 +1,1153 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { searchForLeads, analyzeMarkets, generateMarketReport, extractSearchStrategyFromAssets } from './services/geminiService';
+import { getSessions, saveSession, deleteSession } from './services/storageService';
+import { Lead, ProductDetails, AgentAction, RegionSuggestion, LeadStatus, ProductAsset, SearchSession, MarketReport, TargetAudienceType, StrategicContext } from './types';
+import { Terminal } from './components/Terminal';
+import { LeadCard } from './components/LeadCard';
+import { InteractionViewer } from './components/InteractionViewer';
+import { Dashboard } from './components/Dashboard';
+import { MarketReportModal } from './components/MarketReportModal';
+import { v4 as uuidv4 } from 'uuid';
+import { auth, loginWithGoogle, logout, loginWithEmail, registerWithEmail } from './services/firebase';
+import { LandingPage } from './components/LandingPage';
+import { onAuthStateChanged, User } from 'firebase/auth';
+
+const INITIAL_LOGS = [
+  "TradeNexus AI Agent System v1.0.0 initialized...",
+  "Mode: Deep Discovery & Analysis",
+  "Connect to Database: SUCCESS",
+  "Awaiting product specification...",
+];
+
+// Expanded Country Database (Truncated for brevity in re-print, assumes same data as before)
+const REGION_DATA: Record<string, string[]> = {
+  'Asia': [
+    'Afghanistan', 'Armenia', 'Azerbaijan', 'Bahrain', 'Bangladesh', 'Bhutan', 'Brunei', 'Cambodia', 
+    'China', 'Cyprus', 'Georgia', 'India', 'Indonesia', 'Iran', 'Iraq', 'Israel', 'Japan', 'Jordan', 
+    'Kazakhstan', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Lebanon', 'Malaysia', 'Maldives', 'Mongolia', 
+    'Myanmar', 'Nepal', 'North Korea', 'Oman', 'Pakistan', 'Palestine', 'Philippines', 'Qatar', 
+    'Saudi Arabia', 'Singapore', 'South Korea', 'Sri Lanka', 'Syria', 'Taiwan', 'Tajikistan', 
+    'Thailand', 'Timor-Leste', 'Turkey', 'Turkmenistan', 'UAE', 'Uzbekistan', 'Vietnam', 'Yemen'
+  ],
+  'Europe': [
+    'Albania', 'Andorra', 'Austria', 'Belarus', 'Belgium', 'Bosnia and Herzegovina', 'Bulgaria', 
+    'Croatia', 'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 
+    'Hungary', 'Iceland', 'Ireland', 'Italy', 'Latvia', 'Liechtenstein', 'Lithuania', 'Luxembourg', 
+    'Malta', 'Moldova', 'Monaco', 'Montenegro', 'Netherlands', 'North Macedonia', 'Norway', 'Poland', 
+    'Portugal', 'Romania', 'Russia', 'San Marino', 'Serbia', 'Slovakia', 'Slovenia', 'Spain', 
+    'Sweden', 'Switzerland', 'Ukraine', 'United Kingdom', 'Vatican City'
+  ],
+  'North America': [
+    'Antigua and Barbuda', 'Bahamas', 'Barbados', 'Belize', 'Canada', 'Costa Rica', 'Cuba', 'Dominica', 
+    'Dominican Republic', 'El Salvador', 'Grenada', 'Guatemala', 'Haiti', 'Honduras', 'Jamaica', 
+    'Mexico', 'Nicaragua', 'Panama', 'Saint Kitts and Nevis', 'Saint Lucia', 
+    'Saint Vincent and the Grenadines', 'Trinidad and Tobago', 'United States'
+  ],
+  'South America': [
+    'Argentina', 'Bolivia', 'Brazil', 'Chile', 'Colombia', 'Ecuador', 'Guyana', 'Paraguay', 'Peru', 
+    'Suriname', 'Uruguay', 'Venezuela'
+  ],
+  'Africa': [
+    'Algeria', 'Angola', 'Benin', 'Botswana', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cameroon', 
+    'Central African Republic', 'Chad', 'Comoros', 'DR Congo', 'Djibouti', 'Egypt', 'Equatorial Guinea', 
+    'Eritrea', 'Eswatini', 'Ethiopia', 'Gabon', 'Gambia', 'Ghana', 'Guinea', 'Guinea-Bissau', 
+    'Ivory Coast', 'Kenya', 'Lesotho', 'Liberia', 'Libya', 'Madagascar', 'Malawi', 'Mali', 
+    'Mauritania', 'Mauritius', 'Morocco', 'Mozambique', 'Namibia', 'Niger', 'Nigeria', 'Rwanda', 
+    'Sao Tome and Principe', 'Senegal', 'Seychelles', 'Sierra Leone', 'Somalia', 'South Africa', 
+    'South Sudan', 'Sudan', 'Tanzania', 'Togo', 'Tunisia', 'Uganda', 'Zambia', 'Zimbabwe'
+  ],
+  'Oceania': [
+    'Australia', 'Fiji', 'Kiribati', 'Marshall Islands', 'Micronesia', 'Nauru', 'New Zealand', 
+    'Palau', 'Papua New Guinea', 'Samoa', 'Solomon Islands', 'Tonga', 'Tuvalu', 'Vanuatu'
+  ],
+  'Middle East': [
+    'Bahrain', 'Cyprus', 'Egypt', 'Iran', 'Iraq', 'Israel', 'Jordan', 'Kuwait', 'Lebanon', 'Oman', 
+    'Palestine', 'Qatar', 'Saudi Arabia', 'Syria', 'Turkey', 'UAE', 'Yemen'
+  ]
+};
+
+// Generate 'All' dynamically
+const ALL_COUNTRIES = Array.from(new Set(Object.values(REGION_DATA).flat())).sort();
+REGION_DATA['All'] = ALL_COUNTRIES;
+
+const CONTINENTS = Object.keys(REGION_DATA).filter(k => k !== 'All');
+CONTINENTS.unshift('All');
+
+const COMPANY_SIZES = [
+  "Any Size",
+  "Micro (< 10 Employees)",
+  "Small (10 - 50 Employees)",
+  "Medium (50 - 500 Employees)",
+  "Large (500 - 5000 Employees)",
+  "Enterprise (5000+ Employees)"
+];
+
+const AUDIENCE_TYPES: TargetAudienceType[] = [
+    'Distributors/Importers',
+    'OEMs/Manufacturers',
+    'End Users',
+    'All'
+];
+
+// UPDATED: Increased max lead volume to 100
+const LEAD_COUNT_OPTIONS = [5, 10, 20, 50, 100];
+
+type ViewMode = 'OPERATIONS' | 'DASHBOARD';
+
+// Auto-Pilot Constants
+const SCOUT_INTERVAL_MS = 60000; // Check every 60 seconds (Demo speed)
+const MIN_TIME_BETWEEN_SCOUTS = 120000; // Minimum 2 minutes between searches for same session
+
+export default function App() {
+  // --- STATE ---
+  const [view, setView] = useState<ViewMode>('OPERATIONS');
+  
+  // Panel States
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isLeadsPanelOpen, setIsLeadsPanelOpen] = useState(true);
+  const [isTerminalMinimized, setIsTerminalMinimized] = useState(false);
+
+  // Database / Session State
+  const [sessions, setSessions] = useState<SearchSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+
+  // Input Form State (For creating new sessions)
+  const [productName, setProductName] = useState('');
+  const [productDescription, setProductDescription] = useState('');
+  const [productAssets, setProductAssets] = useState<ProductAsset[]>([]);
+  // CHANGED: searchContext now holds a structured object
+  const [searchContext, setSearchContext] = useState<StrategicContext | null>(null); 
+  
+  const [continent, setContinent] = useState<string>('All');
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [targetCompanySize, setTargetCompanySize] = useState<string>(COMPANY_SIZES[0]);
+  const [targetLeadCount, setTargetLeadCount] = useState<number>(20);
+  const [targetAudience, setTargetAudience] = useState<TargetAudienceType>('All');
+  const [supplierCountry, setSupplierCountry] = useState<string>('China');
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  
+  // Operational State (Active Session Data)
+  const [suggestions, setSuggestions] = useState<RegionSuggestion[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [deployedRegions, setDeployedRegions] = useState<Set<string>>(new Set());
+  
+  // Report Modal State
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [currentReport, setCurrentReport] = useState<MarketReport | null>(null);
+  const [reportRegion, setReportRegion] = useState('');
+
+  // UI State
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [agentLogs, setAgentLogs] = useState<string[]>(INITIAL_LOGS);
+  const [agentAction, setAgentAction] = useState<AgentAction>({ type: 'IDLE', details: '' });
+
+  // Auth State
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [authError, setAuthError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setIsSubmitting(true);
+    try {
+      if (isLoginMode) {
+        await loginWithEmail(email, password);
+      } else {
+        await registerWithEmail(email, password);
+      }
+    } catch (err: any) {
+      setAuthError(err.message || 'Authentication failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Refs for State Safety (Prevents stale closures in async operations)
+  const sessionsRef = useRef(sessions);
+  const leadsRef = useRef(leads);
+  const isAutoPilotRunningRef = useRef(false);
+
+  // --- EFFECTS ---
+  
+  // Initialize responsive state
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+      setIsLeadsPanelOpen(false);
+    }
+  }, []);
+
+  // Load sessions when user arrives
+  useEffect(() => {
+    if (user) {
+      getSessions(user.uid).then((savedSessions) => {
+        setSessions(savedSessions);
+        sessionsRef.current = savedSessions;
+      });
+    } else {
+      setSessions([]);
+      sessionsRef.current = [];
+      setActiveSessionId(null);
+      setLeads([]);
+      setSuggestions([]);
+      setSearchContext(null);
+      setProductAssets([]);
+      setProductName('');
+      setProductDescription('');
+    }
+  }, [user]);
+
+  // Auth Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Sync Refs
+  useEffect(() => {
+      sessionsRef.current = sessions;
+  }, [sessions]);
+
+  useEffect(() => {
+      leadsRef.current = leads;
+  }, [leads]);
+
+  // Sync Active Session to Database whenever critical data changes
+  const updateActiveSession = (newLeads: Lead[], newSuggestions?: RegionSuggestion[]) => {
+     if (!activeSessionId || !user) return;
+
+     setSessions(prev => {
+         const updated = prev.map(s => {
+             if (s.id === activeSessionId) {
+                 const updatedSession = {
+                     ...s,
+                     leads: newLeads,
+                     suggestions: newSuggestions || s.suggestions
+                 };
+                 saveSession(user.uid, updatedSession); // Persist
+                 return updatedSession;
+             }
+             return s;
+         });
+         return updated;
+     });
+  };
+
+  // --- UTILS ---
+
+  // Deduplication Engine
+  const deduplicateLeads = (existingLeads: Lead[], newLeads: Lead[]): { unique: Lead[], duplicates: number } => {
+    const existingWebsites = new Set(existingLeads.map(l => l.website?.toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '')));
+    const existingNames = new Set(existingLeads.map(l => l.companyName.toLowerCase().trim()));
+    
+    const unique: Lead[] = [];
+    let duplicates = 0;
+
+    for (const lead of newLeads) {
+        const cleanWebsite = lead.website?.toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+        const cleanName = lead.companyName.toLowerCase().trim();
+
+        const hasWebsiteMatch = cleanWebsite && existingWebsites.has(cleanWebsite);
+        const hasNameMatch = existingNames.has(cleanName);
+
+        if (!hasWebsiteMatch && !hasNameMatch) {
+            unique.push(lead);
+            // Add to temp sets to prevent duplicates within the new batch itself
+            if (cleanWebsite) existingWebsites.add(cleanWebsite);
+            existingNames.add(cleanName);
+        } else {
+            duplicates++;
+        }
+    }
+
+    return { unique, duplicates };
+  };
+
+  // --- AUTO-PILOT ENGINE ---
+  useEffect(() => {
+      const intervalId = setInterval(async () => {
+          if (isAutoPilotRunningRef.current) return;
+
+          const now = Date.now();
+          const sessionsToScout = sessionsRef.current.filter(
+              s => s.isAutoPilotEnabled && 
+              (!s.lastScoutTime || (now - s.lastScoutTime > MIN_TIME_BETWEEN_SCOUTS))
+          );
+
+          if (sessionsToScout.length === 0) return;
+
+          isAutoPilotRunningRef.current = true;
+          const session = sessionsToScout[0]; // Process one at a time to avoid rate limits
+
+          try {
+              // SMART TARGETING STRATEGY for AUTO-PILOT
+              
+              let scoutRegion = session.config.continent;
+              let strategySource = "Broad Search";
+
+              const explicitCountries = session.config.countries || [];
+
+              // STRATEGY 1: STRICT USER OBEDIENCE
+              if (explicitCountries.length > 0) {
+                   scoutRegion = explicitCountries[Math.floor(Math.random() * explicitCountries.length)];
+                   strategySource = "Strict User Selection";
+              }
+              // STRATEGY 2: AI INTELLIGENCE (Fallback for Broad Searches)
+              else if (session.suggestions && session.suggestions.length > 0) {
+                  const highPotential = session.suggestions.filter(s => s.demandLevel === 'High');
+                  const pool = highPotential.length > 0 ? highPotential : session.suggestions;
+                  const target = pool[Math.floor(Math.random() * pool.length)];
+                  scoutRegion = target.region;
+                  strategySource = `AI Strategic Target (${target.demandLevel} Demand)`;
+              }
+
+              addAgentLog(`[Auto-Pilot] 🤖 Waking up for "${session.name}"...`);
+              addAgentLog(`[Auto-Pilot] Target: ${scoutRegion} [${strategySource}]`);
+              
+              const productContext: ProductDetails = {
+                  name: session.name,
+                  description: session.productDescription,
+                  targetRegion: scoutRegion,
+                  targetCompanySize: session.config.targetCompanySize,
+                  targetLeadCount: session.config.targetLeadCount || 20,
+                  targetAudience: session.config.targetAudience, // Use stored audience preference
+                  supplierCountry: session.config.supplierCountry,
+                  strategicContext: session.strategicContext // Use structured memory
+              };
+
+              // searchForLeads will now use the "Hub-and-Spoke" strategy to map cities within this specific country
+              const foundLeads = await searchForLeads(productContext);
+              
+              // Apply Deduplication Engine using session leads
+              const { unique: uniqueNewLeads } = deduplicateLeads(session.leads, foundLeads);
+
+              if (uniqueNewLeads.length > 0) {
+                   const flaggedNewLeads = uniqueNewLeads.map(l => ({ ...l, isNew: true }));
+                   const updatedLeads = [...session.leads, ...flaggedNewLeads];
+                   
+                   const updatedSession: SearchSession = {
+                       ...session,
+                       leads: updatedLeads,
+                       lastScoutTime: now
+                   };
+
+                   // Update State
+                   setSessions(prev => prev.map(s => s.id === session.id ? updatedSession : s));
+                   if (user) saveSession(user.uid, updatedSession);
+                   
+                   // Update active view if viewing this session
+                   if (activeSessionId === session.id) {
+                       setLeads(updatedLeads);
+                   }
+
+                   addAgentLog(`[Auto-Pilot] ✅ Success! Found ${uniqueNewLeads.length} verified leads in ${scoutRegion}.`);
+              } else {
+                   // Update time only
+                   const updatedSession = { ...session, lastScoutTime: now };
+                   setSessions(prev => prev.map(s => s.id === session.id ? updatedSession : s));
+                   if (user) saveSession(user.uid, updatedSession);
+                   addAgentLog(`[Auto-Pilot] Territory saturated. No new verified leads found in ${scoutRegion}.`);
+              }
+
+          } catch (e) {
+              console.error("Auto-pilot error", e);
+              addAgentLog(`[Auto-Pilot] Error during scout cycle: ${e}`);
+          } finally {
+              isAutoPilotRunningRef.current = false;
+          }
+
+      }, SCOUT_INTERVAL_MS);
+
+      return () => clearInterval(intervalId);
+  }, [activeSessionId]); 
+
+  // --- HANDLERS ---
+
+  const addAgentLog = (msg: string) => {
+    setAgentLogs(prev => [...prev, msg]);
+  };
+
+  // TRIGGERED ON FILE UPLOAD
+  const handleAssetUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files: File[] = Array.from(e.target.files);
+      const newAssets: ProductAsset[] = [];
+
+      // Process files
+      for (const file of files) {
+          const base64Data = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                  const result = reader.result as string;
+                  resolve(result.split(',')[1]);
+              };
+              reader.readAsDataURL(file);
+          });
+          newAssets.push({ data: base64Data, mimeType: file.type, fileName: file.name });
+      }
+
+      const updatedAssets = [...productAssets, ...newAssets];
+      setProductAssets(updatedAssets);
+      addAgentLog(`${newAssets.length} asset(s) attached. Ready for analysis.`);
+    }
+  };
+
+  const removeAsset = (indexToRemove: number) => {
+    setProductAssets(prev => prev.filter((_, index) => index !== indexToRemove));
+    // Note: We intentionally DO NOT clear the searchContext here, 
+    // as the user might want to keep the insights even if they remove the large file.
+  };
+
+  const handleContinentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setContinent(e.target.value);
+    setSelectedCountries([]);
+    setIsCountryDropdownOpen(false);
+  };
+
+  const toggleCountry = (country: string) => {
+    setSelectedCountries(prev => prev.includes(country) ? prev.filter(c => c !== country) : [...prev, country]);
+  };
+
+  const selectAllVisible = () => {
+    setSelectedCountries(REGION_DATA[continent]);
+  }
+
+  const loadSession = (sessionId: string) => {
+      const session = sessions.find(s => s.id === sessionId);
+      if (!session) return;
+
+      setActiveSessionId(sessionId);
+      setProductName(session.name);
+      setProductDescription(session.productDescription || '');
+      setContinent(session.config.continent);
+      setSelectedCountries(session.config.countries);
+      setTargetCompanySize(session.config.targetCompanySize || COMPANY_SIZES[0]);
+      setTargetLeadCount(session.config.targetLeadCount || 20);
+      setTargetAudience(session.config.targetAudience || 'All');
+      setSupplierCountry(session.config.supplierCountry || 'China');
+      setSuggestions(session.suggestions);
+      setLeads(session.leads);
+      setProductAssets([]); // Clear assets as they are not persisted in session
+      // CHANGED: Load the structured memory object
+      setSearchContext(session.strategicContext || null);
+      setDeployedRegions(new Set()); 
+      setView('OPERATIONS');
+      addAgentLog(`Loaded campaign: ${session.name}`);
+  };
+
+  const createNewSession = (analysisResults: RegionSuggestion[], activeContext: StrategicContext | null) => {
+      const newSession: SearchSession = {
+          id: uuidv4(),
+          createdAt: Date.now(),
+          name: productName || "Untitled Campaign",
+          productDescription: productDescription, 
+          config: {
+              continent,
+              countries: selectedCountries,
+              targetCompanySize,
+              targetLeadCount,
+              targetAudience,
+              supplierCountry
+          },
+          suggestions: analysisResults,
+          leads: [],
+          isAutoPilotEnabled: false,
+          // SAVE STRUCTURED MEMORY TO SESSION
+          strategicContext: activeContext || undefined
+      };
+      
+      setSessions(prev => [newSession, ...prev]);
+      setActiveSessionId(newSession.id);
+      if (user) saveSession(user.uid, newSession);
+      return newSession;
+  };
+
+  const handleAnalyzeMarkets = async () => {
+    if (!productName) return;
+    setIsAnalyzing(true);
+    setSuggestions([]);
+    setDeployedRegions(new Set());
+    setSelectedLeadId(null);
+    setLeads([]); // Clear current view
+    setView('OPERATIONS');
+    
+    // Auto-close sidebar on mobile when action starts
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+
+    setAgentAction({ type: 'ANALYZING', details: 'Analyzing trade data & product assets...' });
+    addAgentLog(`Starting new analysis for: ${productName}`);
+
+    try {
+      // 1. LAZY EXTRACTION: If assets exist but no context, extract now.
+      let activeContext: StrategicContext | null = searchContext;
+      
+      if (!activeContext && productAssets.length > 0) {
+          addAgentLog(`Deep scanning ${productAssets.length} document(s) for structured memory extraction...`);
+          setAgentAction({ type: 'ANALYZING', details: 'Extracting strategic memory from documents...' });
+          
+          activeContext = await extractSearchStrategyFromAssets({
+              name: productName,
+              assets: productAssets
+          });
+          
+          setSearchContext(activeContext); // Save to state for future use
+          addAgentLog(`Strategic memory extracted.`);
+      }
+
+      setAgentAction({ type: 'ANALYZING', details: 'Analyzing global trade data...' });
+
+      // 2. ANALYZE MARKETS (Pass the activeContext)
+      // Note: analyzeMarkets expects StrategicContext | undefined
+      const results = await analyzeMarkets(productName, productDescription, continent, selectedCountries, productAssets, activeContext || undefined);
+      setSuggestions(results);
+      addAgentLog(`Analysis complete. ${results.length} regions identified.`);
+      
+      // 3. CREATE NEW SESSION (Save the context)
+      createNewSession(results, activeContext);
+      addAgentLog(`Campaign saved to database.`);
+
+    } catch (e) {
+      addAgentLog(`Analysis failed: ${e}`);
+    } finally {
+      setIsAnalyzing(false);
+      setAgentAction({ type: 'IDLE', details: '' });
+    }
+  };
+
+  const handleDeepDive = async (region: string) => {
+      // Background Processing Logic
+      
+      // 1. Update status to LOADING immediately
+      setSuggestions(prev => {
+          const updated = prev.map(s => s.region === region ? { ...s, reportStatus: 'LOADING' as const } : s);
+          updateActiveSession(leads, updated);
+          return updated;
+      });
+      addAgentLog(`[Intel] Deep Dive initiated for ${region}. Running in background...`);
+
+      const productContext: ProductDetails = {
+          name: productName,
+          description: productDescription,
+          strategicContext: searchContext || undefined, // Pass the AI Context
+          supplierCountry: supplierCountry
+      };
+
+      try {
+          // 2. Run generation async
+          const report = await generateMarketReport(productContext, region);
+          
+          // 3. Update status to READY and save report
+          setSuggestions(prev => {
+              const updated = prev.map(s => s.region === region ? { ...s, reportStatus: 'READY' as const, report } : s);
+              updateActiveSession(leads, updated);
+              return updated;
+          });
+          addAgentLog(`[Intel] Report ready for ${region}.`);
+
+      } catch (e) {
+          console.error(e);
+          setSuggestions(prev => {
+              const updated = prev.map(s => s.region === region ? { ...s, reportStatus: 'ERROR' as const } : s);
+              updateActiveSession(leads, updated);
+              return updated;
+          });
+          addAgentLog(`[Intel] Report generation failed for ${region}.`);
+      }
+  };
+
+  const openReport = (region: string) => {
+      const suggestion = suggestions.find(s => s.region === region);
+      if (suggestion && suggestion.report) {
+          setReportRegion(region);
+          setCurrentReport(suggestion.report);
+          setReportModalOpen(true);
+      }
+  };
+
+  const deployScout = async (region: string) => {
+    if (deployedRegions.has(region)) return;
+
+    setDeployedRegions(prev => new Set(prev).add(region));
+    const scoutId = `Scout-${region.substring(0,3).toUpperCase()}`;
+    addAgentLog(`[${scoutId}] Deploying to ${region}...`);
+    
+    // Auto-open leads panel on mobile to show results
+    if (window.innerWidth < 768) {
+      setIsLeadsPanelOpen(true);
+    }
+
+    // Optimization: We rely on `searchContext` which was computed at analysis time.
+
+    const productContext: ProductDetails = {
+        name: productName,
+        description: productDescription,
+        targetRegion: region,
+        targetCompanySize: targetCompanySize,
+        targetLeadCount: targetLeadCount, // Pass Config
+        targetAudience: targetAudience, // Pass Audience
+        supplierCountry: supplierCountry,
+        // We do NOT pass 'assets' here, to prevent re-upload.
+        // We pass the extracted text context instead.
+        strategicContext: searchContext || undefined
+    };
+
+    try {
+        setAgentAction({ type: 'SEARCHING', details: `Scouting ${region} for ${targetLeadCount} verified candidates...` });
+        
+        // 1. Search (Note: searchForLeads internally splits this into 4 territory squads)
+        const foundLeads = await searchForLeads(productContext);
+
+        // 2. Deduplicate using leadsRef to avoid stale closure state
+        const currentLeads = leadsRef.current;
+        const { unique: newLeads, duplicates } = deduplicateLeads(currentLeads, foundLeads);
+        
+        // UPDATE STATE & DB (Atomic)
+        const leadsWithContext = [...currentLeads, ...newLeads];
+        setLeads(leadsWithContext);
+        updateActiveSession(leadsWithContext);
+
+        if (duplicates > 0) {
+            addAgentLog(`[${scoutId}] Found ${foundLeads.length} candidates. Merged ${duplicates} duplicates.`);
+        } else {
+            addAgentLog(`[${scoutId}] Found ${newLeads.length} new matches.`);
+        }
+
+        if (newLeads.length === 0) {
+            setAgentAction({ type: 'IDLE', details: 'No new leads found.' });
+            return;
+        }
+
+        addAgentLog(`[${scoutId}] Discovery complete.`);
+
+    } catch (e) {
+        addAgentLog(`[${scoutId}] Error: ${e}`);
+    } finally {
+        setAgentAction({ type: 'IDLE', details: 'Awaiting orders.' });
+    }
+  };
+
+  const toggleAutoPilot = (sessionId: string, enabled: boolean) => {
+      const session = sessions.find(s => s.id === sessionId);
+      if (session) {
+          const updated = { ...session, isAutoPilotEnabled: enabled };
+          setSessions(prev => prev.map(s => s.id === sessionId ? updated : s));
+          if (user) saveSession(user.uid, updated);
+          addAgentLog(`[System] Auto-Pilot ${enabled ? 'ENABLED' : 'DISABLED'} for ${session.name}`);
+      }
+  };
+
+  const handleDeleteSession = (sessionId: string) => {
+      if (user) deleteSession(user.uid, sessionId);
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      if (activeSessionId === sessionId) {
+          setActiveSessionId(null);
+          setLeads([]);
+          setSuggestions([]);
+          setProductName('');
+          setProductDescription('');
+          setSearchContext(null);
+          setProductAssets([]);
+      }
+      addAgentLog(`[System] Session deleted.`);
+  };
+
+  const handleLeadClick = (leadId: string) => {
+      // Clear 'New' flag when clicking
+      setLeads(prev => {
+          const updated = prev.map(l => l.id === leadId ? { ...l, isNew: false } : l);
+          updateActiveSession(updated);
+          return updated;
+      });
+      setSelectedLeadId(leadId); 
+      setView('OPERATIONS');
+      
+      // Auto-close panels on mobile for better view
+      if (window.innerWidth < 768) {
+        setIsLeadsPanelOpen(false);
+        setIsSidebarOpen(false);
+      }
+  };
+
+  const handleLeadUpdate = (updatedLead: Lead) => {
+      setLeads(prev => {
+          const newLeads = prev.map(l => l.id === updatedLead.id ? updatedLead : l);
+          updateActiveSession(newLeads);
+          return newLeads;
+      });
+  };
+
+  const selectedLead = leads.find(l => l.id === selectedLeadId);
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen bg-slate-950 items-center justify-center text-slate-100">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-medium animate-pulse">Initializing System...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <LandingPage 
+        handleEmailAuth={handleEmailAuth}
+        loginWithGoogle={loginWithGoogle}
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
+        isLoginMode={isLoginMode}
+        setIsLoginMode={setIsLoginMode}
+        authError={authError}
+        isSubmitting={isSubmitting}
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-screen bg-slate-950 text-slate-100 font-sans selection:bg-primary-500 selection:text-white overflow-hidden relative">
+      
+      {/* Modals */}
+      <MarketReportModal 
+         isOpen={reportModalOpen} 
+         onClose={() => setReportModalOpen(false)}
+         report={currentReport}
+         region={reportRegion}
+      />
+
+      {/* MOBILE BACKDROP OVERLAY */}
+      {(isSidebarOpen || (isLeadsPanelOpen && view === 'OPERATIONS')) && (
+        <div 
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={() => { setIsSidebarOpen(false); setIsLeadsPanelOpen(false); }}
+        />
+      )}
+
+      {/* COLUMN 1: STRATEGY & CONFIGURATION */}
+      <div 
+        className={`fixed inset-y-0 left-0 z-50 h-full bg-slate-900 flex flex-col transition-all duration-300 shadow-2xl border-r border-slate-800 md:relative md:z-30 ${isSidebarOpen ? 'translate-x-0 w-[85vw] sm:w-80' : '-translate-x-full w-0 md:translate-x-0 md:w-12'}`}
+      >
+        {/* Toggle Button (Desktop Only or Inside Drawer on Mobile) */}
+        <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="absolute -right-3 top-6 z-50 bg-slate-800 border border-slate-600 rounded-full p-1 text-slate-400 hover:text-white hover:border-slate-400 transition-colors shadow-lg hidden md:block"
+        >
+            <svg className={`w-3 h-3 transition-transform ${isSidebarOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+        </button>
+
+        {isSidebarOpen ? (
+            // OPEN STATE CONTENT
+            <>
+                <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+                  <div>
+                    <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        <span className="w-3 h-3 bg-primary-500 rounded-full animate-pulse"></span>
+                        TradeNexus
+                    </h1>
+                    <p className="text-xs text-slate-500 mt-1">Autonomous B2B Sales System</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={logout} className="text-xs text-slate-400 hover:text-white underline hidden md:block">Logout</button>
+                    {/* Mobile Close Button */}
+                    <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white">
+                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* View Switcher */}
+                <div className="flex border-b border-slate-800 shrink-0">
+                    <button 
+                        onClick={() => { setView('OPERATIONS'); setSelectedLeadId(null); setIsSidebarOpen(false); }} // Close on mobile nav
+                        className={`flex-1 py-3 text-xs font-medium tracking-wide transition-colors ${view === 'OPERATIONS' ? 'bg-slate-800 text-white border-b-2 border-primary-500' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        OPERATIONS
+                    </button>
+                    <button 
+                        onClick={() => { setView('DASHBOARD'); setIsSidebarOpen(false); }} // Close on mobile nav
+                        className={`flex-1 py-3 text-xs font-medium tracking-wide transition-colors ${view === 'DASHBOARD' ? 'bg-slate-800 text-white border-b-2 border-primary-500' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        DASHBOARD
+                    </button>
+                </div>
+
+                {/* Strategy Setup Form */}
+                <div className="p-6 space-y-5 overflow-y-auto flex-1 custom-scrollbar min-w-[20rem]">
+                    {sessions.length > 0 && (
+                        <div className="mb-4">
+                            <label className="block text-[10px] text-slate-500 mb-2 font-bold uppercase tracking-wider">Campaign History</label>
+                            <select 
+                                value={activeSessionId || ''}
+                                onChange={(e) => {
+                                    if (e.target.value === 'new') {
+                                        setActiveSessionId(null);
+                                        setProductName('');
+                                        setProductDescription('');
+                                        setSearchContext(null);
+                                        setLeads([]);
+                                        setSuggestions([]);
+                                    } else {
+                                        loadSession(e.target.value);
+                                        if (window.innerWidth < 768) setIsSidebarOpen(false); // Close on selection mobile
+                                    }
+                                }}
+                                className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2 text-xs focus:outline-none focus:border-primary-500 text-white"
+                            >
+                                <option value="new">+ Start New Campaign</option>
+                                {sessions.map(s => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.name} ({new Date(s.createdAt).toLocaleDateString()})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    <div className="border-t border-slate-800 pt-4">
+                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
+                            {activeSessionId ? 'Current Campaign Config' : 'New Campaign Setup'}
+                        </h2>
+                        
+                        {/* Product Name */}
+                        <div className="mb-4">
+                          <label className="block text-[10px] text-slate-500 mb-1 font-bold">Product Name</label>
+                          <input 
+                            type="text" 
+                            value={productName}
+                            onChange={e => setProductName(e.target.value)}
+                            placeholder="e.g. Lithium Ion Batteries"
+                            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary-500 text-white placeholder-slate-600 mb-2"
+                          />
+                          <label className="block text-[10px] text-slate-500 mb-1 font-bold mt-2">Description / Specifications</label>
+                          <textarea 
+                            value={productDescription}
+                            onChange={e => setProductDescription(e.target.value)}
+                            placeholder="Paste detailed product specs, brand names, or catalog text here..."
+                            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-xs focus:outline-none focus:border-primary-500 text-white placeholder-slate-600 min-h-[100px] align-top"
+                          />
+                        </div>
+
+                        {/* Product Assets Upload */}
+                        <div className="mb-4">
+                           <label className="block text-[10px] text-slate-500 mb-1 font-bold">Product Assets (PDF/Image)</label>
+                           <label className="flex flex-col items-center justify-center w-full h-16 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer bg-slate-800/50 hover:bg-slate-800 hover:border-primary-500/50 transition-all mb-2 relative">
+                                <div className="flex flex-col items-center justify-center pt-1 pb-1">
+                                    <span className="text-[9px] text-slate-500">Upload Product Docs (PDF/Image)</span>
+                                </div>
+                                <input type="file" className="hidden" accept="image/*,.pdf" multiple onChange={handleAssetUpload} />
+                            </label>
+
+                           {productAssets.length > 0 && (
+                               <div className="grid grid-cols-3 gap-2">
+                                   {productAssets.map((asset, idx) => (
+                                       <div key={idx} className="relative group aspect-square rounded-md bg-slate-800 overflow-hidden border border-slate-700 flex items-center justify-center">
+                                            {asset.mimeType.startsWith('image/') ? (
+                                                <img src={`data:${asset.mimeType};base64,${asset.data}`} alt="Thumb" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center p-2 text-center h-full w-full bg-slate-900">
+                                                    <span className="text-xl">📄</span>
+                                                    <span className="text-[7px] text-slate-400 mt-1 break-all leading-tight px-1 line-clamp-3">{asset.fileName}</span>
+                                                </div>
+                                            )}
+                                            <button onClick={() => removeAsset(idx)} className="absolute top-0 right-0 p-1 bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10">×</button>
+                                       </div>
+                                   ))}
+                               </div>
+                           )}
+                        </div>
+
+                        {/* SUPPLIER COUNTRY (NEW) */}
+                        <div className="mb-4">
+                          <label className="block text-[10px] text-slate-500 mb-1 font-bold uppercase tracking-wider">Supplier Country of Origin</label>
+                          <select 
+                            value={supplierCountry}
+                            onChange={e => setSupplierCountry(e.target.value)}
+                            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2 text-sm text-white focus:border-primary-500"
+                          >
+                            {ALL_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+
+                        {/* TARGET AUDIENCE (NEW) */}
+                        <div className="mb-4">
+                          <label className="block text-[10px] text-primary-400 mb-1 font-bold uppercase tracking-wider">Target Audience Strategy</label>
+                          <select 
+                            value={targetAudience}
+                            onChange={e => setTargetAudience(e.target.value as TargetAudienceType)}
+                            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2 text-sm mb-2 text-white focus:border-primary-500"
+                          >
+                            {AUDIENCE_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                          <p className="text-[9px] text-slate-500 leading-tight">
+                             {targetAudience === 'Distributors/Importers' && "Finds local companies that buy bulk to resell."}
+                             {targetAudience === 'OEMs/Manufacturers' && "Finds factories that use your product as a component."}
+                             {targetAudience === 'End Users' && "Finds large companies that consume the product directly."}
+                             {targetAudience === 'All' && "Finds any viable business partner (Distributors, Factories, or End Users)."}
+                          </p>
+                        </div>
+                        
+                        {/* Target Company Size */}
+                        <div className="mb-4">
+                          <label className="block text-[10px] text-slate-500 mb-1 font-bold">Target Company Size</label>
+                          <select 
+                            value={targetCompanySize}
+                            onChange={e => setTargetCompanySize(e.target.value)}
+                            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2 text-sm mb-2 text-white"
+                          >
+                            {COMPANY_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        
+                        {/* Target Lead Volume */}
+                         <div className="mb-4">
+                          <label className="block text-[10px] text-slate-500 mb-1 font-bold">Lead Volume (Per Search)</label>
+                          <select 
+                            value={targetLeadCount}
+                            onChange={e => setTargetLeadCount(Number(e.target.value))}
+                            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2 text-sm mb-2 text-white"
+                          >
+                            {LEAD_COUNT_OPTIONS.map(num => <option key={num} value={num}>{num} Leads</option>)}
+                          </select>
+                        </div>
+
+                        {/* Region & Countries */}
+                        <div className="mb-4">
+                          <label className="block text-[10px] text-slate-500 mb-1 font-bold">Region</label>
+                          <select 
+                            value={continent}
+                            onChange={handleContinentChange}
+                            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2 text-sm text-white mb-2"
+                          >
+                            {CONTINENTS.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                          
+                          <div className="relative">
+                              <button 
+                                onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                                className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white text-left truncate"
+                              >
+                                 {selectedCountries.length === 0 ? "Select Countries..." : `${selectedCountries.length} selected`}
+                              </button>
+                              {isCountryDropdownOpen && (
+                                  <div className="absolute top-full left-0 w-full mt-1 bg-slate-900 border border-slate-700 rounded-md shadow-2xl max-h-40 overflow-y-auto z-50 p-1">
+                                       <button onClick={selectAllVisible} className="w-full text-left text-[10px] text-primary-400 p-1">Select All</button>
+                                       {REGION_DATA[continent].sort().map(c => (
+                                           <div key={c} onClick={() => toggleCountry(c)} className={`cursor-pointer p-1 text-xs ${selectedCountries.includes(c) ? 'text-primary-400 font-bold' : 'text-slate-400'}`}>
+                                               {c} {selectedCountries.includes(c) && '✓'}
+                                           </div>
+                                       ))}
+                                  </div>
+                              )}
+                          </div>
+                        </div>
+                        
+                        <button 
+                            onClick={handleAnalyzeMarkets}
+                            disabled={!productName || isAnalyzing}
+                            className={`w-full py-2 rounded font-medium transition-colors text-sm ${
+                                !productName || isAnalyzing 
+                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
+                                : 'bg-primary-600 hover:bg-primary-500 text-white shadow-lg shadow-primary-900/20'
+                            }`}
+                        >
+                            {isAnalyzing ? 'Analyzing...' : (activeSessionId ? 'Run New Analysis' : 'Analyze Markets')}
+                        </button>
+                    </div>
+                </div>
+            </>
+        ) : (
+            // CLOSED STATE CONTENT (Desktop Icon View)
+            <div className="h-full flex flex-col items-center py-4 hidden md:flex">
+                <span className="w-3 h-3 bg-primary-500 rounded-full mb-6"></span>
+                <div className="flex-1 flex items-center justify-center">
+                    <span className="-rotate-90 text-slate-500 font-bold tracking-[0.2em] whitespace-nowrap text-xs">CONFIGURATION</span>
+                </div>
+            </div>
+        )}
+      </div>
+
+      {/* COLUMN 2: ACTIVE LEADS */}
+      {view === 'OPERATIONS' && (
+        <div 
+            className={`fixed inset-y-0 left-0 z-40 h-full bg-slate-900/95 backdrop-blur-md flex flex-col transition-all duration-300 border-r border-slate-800 md:relative md:z-20 md:bg-slate-900/50 ${isLeadsPanelOpen ? 'translate-x-0 w-[85vw] sm:w-80' : '-translate-x-full w-0 md:translate-x-0 md:w-12'}`}
+        >
+            {/* Toggle Button */}
+            <button 
+                onClick={() => setIsLeadsPanelOpen(!isLeadsPanelOpen)}
+                className="absolute -right-3 top-16 z-50 bg-slate-800 border border-slate-600 rounded-full p-1 text-slate-400 hover:text-white hover:border-slate-400 transition-colors shadow-lg hidden md:block"
+            >
+                <svg className={`w-3 h-3 transition-transform ${isLeadsPanelOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+
+            {isLeadsPanelOpen ? (
+                <>
+                    <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Leads</h3>
+                        <div className="flex items-center gap-2">
+                            <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-full border border-slate-700">{leads.length}</span>
+                            <button onClick={() => setIsLeadsPanelOpen(false)} className="md:hidden text-slate-400">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar min-w-[20rem]">
+                        {leads.length === 0 && (
+                            <div className="text-center text-slate-600 text-xs py-12 px-4 border-2 border-dashed border-slate-800 rounded bg-slate-900/30">
+                                <div className="mb-2">⚠️</div>
+                                No active leads. <br/> 
+                                <span className="opacity-70">Deploy scouts from the Map view to find clients.</span>
+                            </div>
+                        )}
+                        {leads.map(lead => (
+                            <LeadCard 
+                                key={lead.id} 
+                                lead={lead} 
+                                isActive={selectedLeadId === lead.id}
+                                onClick={() => handleLeadClick(lead.id)}
+                            />
+                        ))}
+                    </div>
+                </>
+            ) : (
+                <div className="h-full flex flex-col items-center py-4 hidden md:flex">
+                    <div className="flex-1 flex items-center justify-center">
+                        <span className="-rotate-90 text-slate-500 font-bold tracking-[0.2em] whitespace-nowrap text-xs">ACTIVE LEADS</span>
+                    </div>
+                    <span className="bg-slate-800 text-slate-400 text-[10px] w-6 h-6 flex items-center justify-center rounded-full border border-slate-700 mt-4">{leads.length}</span>
+                </div>
+            )}
+        </div>
+      )}
+
+      {/* COLUMN 3: MAIN WORKSPACE */}
+      <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative z-10 transition-all duration-300">
+        
+        {/* MOBILE HEADER */}
+        <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 shrink-0">
+             <button onClick={() => setIsSidebarOpen(true)} className="text-slate-300 flex items-center gap-2 text-sm font-bold">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                Menu
+             </button>
+             <span className="text-white font-bold tracking-tight">TradeNexus</span>
+             {view === 'OPERATIONS' && (
+                 <button onClick={() => setIsLeadsPanelOpen(true)} className="text-slate-300 flex items-center gap-2 text-sm font-bold relative">
+                    Leads
+                    <span className="bg-primary-600 text-white text-[10px] px-1.5 rounded-full">{leads.length}</span>
+                 </button>
+             )}
+        </div>
+
+        {view === 'DASHBOARD' ? (
+            <Dashboard sessions={sessions} onToggleAutoPilot={toggleAutoPilot} onDeleteSession={handleDeleteSession} />
+        ) : (
+            <>
+                <div className={`flex-1 ${selectedLead ? 'overflow-hidden' : 'overflow-y-auto p-4 md:p-6'} flex flex-col`}>
+                  {selectedLead ? (
+                     <InteractionViewer 
+                        lead={selectedLead} 
+                        productContext={searchContext || undefined}
+                        onUpdateLead={handleLeadUpdate}
+                     />
+                  ) : suggestions.length > 0 ? (
+                    <div className="flex-1">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-2">
+                            <div>
+                                <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">Market Intelligence</h2>
+                                <p className="text-slate-400 text-xs md:text-sm mt-1">
+                                    Strategic Analysis for <span className="text-primary-400 font-semibold">{productName}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            {suggestions.map((sug, idx) => {
+                                const isDeployed = deployedRegions.has(sug.region);
+                                const isReportLoading = sug.reportStatus === 'LOADING';
+                                const isReportReady = sug.reportStatus === 'READY';
+
+                                return (
+                                    <div key={idx} className={`relative p-5 rounded-lg border flex flex-col transition-all duration-300 ${isDeployed ? 'bg-slate-900/80 border-primary-900/50' : 'bg-slate-900 border-slate-800 hover:border-slate-600 hover:shadow-xl'}`}>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <span className="font-bold text-base md:text-lg text-white">{sug.region}</span>
+                                            <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide border ${sug.demandLevel === 'High' ? 'bg-green-950 border-green-900 text-green-400' : 'bg-yellow-950 border-yellow-900 text-yellow-400'}`}>{sug.demandLevel} Demand</span>
+                                        </div>
+                                        <p className="text-sm text-slate-400 mb-6 flex-1 leading-relaxed">{sug.reason}</p>
+                                        
+                                        <div className="grid grid-cols-2 gap-2 mt-auto">
+                                            <button 
+                                                onClick={() => isReportReady ? openReport(sug.region) : handleDeepDive(sug.region)}
+                                                disabled={isReportLoading}
+                                                className={`py-3 rounded text-sm font-semibold border transition-colors flex items-center justify-center gap-2 ${
+                                                    isReportReady 
+                                                    ? 'bg-emerald-900/50 hover:bg-emerald-900 border-emerald-700 text-emerald-400' 
+                                                    : 'bg-slate-800 hover:bg-slate-700 text-white border-slate-600'
+                                                }`}
+                                            >
+                                                {isReportLoading ? (
+                                                    <><div className="w-3 h-3 border-2 border-slate-400 border-t-white rounded-full animate-spin"></div> Intel...</>
+                                                ) : isReportReady ? (
+                                                    'View Report'
+                                                ) : (
+                                                    'Deep Dive'
+                                                )}
+                                            </button>
+                                            <button 
+                                                onClick={() => deployScout(sug.region)} 
+                                                disabled={isDeployed} 
+                                                className={`py-3 rounded text-sm font-semibold transition-all ${isDeployed ? 'bg-slate-950 border border-slate-800 text-primary-500 cursor-default' : 'bg-primary-600 hover:bg-primary-500 text-white shadow-lg'}`}
+                                            >
+                                                {isDeployed ? 'Active' : 'Deploy Scout'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-slate-600">
+                      {isAnalyzing ? (
+                          <div className="flex flex-col items-center animate-pulse">
+                              <div className="w-16 h-16 rounded-full border-4 border-primary-500/20 border-t-primary-500 animate-spin mb-4"></div>
+                              <h3 className="text-xl font-light text-primary-400">Scanning Global Markets...</h3>
+                          </div>
+                      ) : (
+                          <div className="border border-dashed border-slate-800 rounded-2xl p-8 md:p-12 bg-slate-900/20 max-w-lg text-center mx-4">
+                             <h3 className="text-xl font-medium text-slate-400 mb-2">Ready to Trade</h3>
+                             <p className="text-slate-500 text-sm">Configure your strategy in the sidebar to begin.</p>
+                          </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className={`${isTerminalMinimized ? 'h-10' : 'h-32 md:h-48'} border-t border-slate-800 bg-black p-2 md:p-4 flex-shrink-0 transition-all duration-300`}>
+                  <Terminal 
+                    logs={agentLogs} 
+                    currentAction={agentAction} 
+                    isMinimized={isTerminalMinimized}
+                    onToggleMinimize={() => setIsTerminalMinimized(!isTerminalMinimized)}
+                  />
+                </div>
+            </>
+        )}
+      </div>
+    </div>
+  );
+}

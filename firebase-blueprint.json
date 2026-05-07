@@ -1,0 +1,37 @@
+{
+  "entities": {
+    "Session": {
+      "title": "Search Session",
+      "description": "A session representing search context, leads, and memory.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "name": { "type": "string" },
+        "productDescription": { "type": "string" },
+        "config": {
+          "type": "object",
+          "properties": {
+            "continent": { "type": "string" },
+            "countries": { "type": "array", "items": { "type": "string" } },
+            "targetCompanySize": { "type": "string" },
+            "targetLeadCount": { "type": "number" },
+            "targetAudience": { "type": "string" },
+            "supplierCountry": { "type": "string" }
+          }
+        },
+        "suggestions": { "type": "array" },
+        "leads": { "type": "array" },
+        "isAutoPilotEnabled": { "type": "boolean" },
+        "lastScoutTime": { "type": "number" }
+      },
+      "required": ["userId", "createdAt", "name", "config"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/Session" },
+      "description": "User-specific search sessions"
+    }
+  }
+}

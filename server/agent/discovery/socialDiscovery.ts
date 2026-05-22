@@ -155,7 +155,7 @@ export async function discoverSocialForCompany(
 
     return parsed.profiles.map((p: any) => ({
       id: uuidv4(),
-      sourceType: p.platform || 'other',
+      sourceType: (p.platform as EvidenceSourceType) || 'web',
       url: p.url || '',
       title: `${companyName} - ${p.platform}`,
       snippet: p.relevanceNotes,

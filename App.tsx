@@ -1,17 +1,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { searchForLeads, analyzeMarkets, generateMarketReport, extractSearchStrategyFromAssets } from './services/geminiService';
-import { getSessions, saveSession, deleteSession } from './services/storageService';
-import { Lead, ProductDetails, AgentAction, RegionSuggestion, LeadStatus, ProductAsset, SearchSession, MarketReport, TargetAudienceType, StrategicContext } from './types';
+import { getSessions, saveSession, deleteSession, getSupplierProfile, saveSupplierProfile } from './services/storageService';
+import { Lead, ProductDetails, AgentAction, RegionSuggestion, LeadStatus, ProductAsset, SearchSession, MarketReport, TargetAudienceType, StrategicContext, SupplierProfile } from './types';
 import { Terminal } from './components/Terminal';
 import { LeadCard } from './components/LeadCard';
 import { InteractionViewer } from './components/InteractionViewer';
 import { Dashboard } from './components/Dashboard';
 import { MarketReportModal } from './components/MarketReportModal';
+import { SupplierProfileView } from './components/SupplierProfileView';
 import { v4 as uuidv4 } from 'uuid';
 import { auth, loginWithGoogle, logout, loginWithEmail, registerWithEmail } from './services/firebase';
 import { LandingPage } from './components/LandingPage';
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { Home, Plus, UserRound } from 'lucide-react';
 
 const INITIAL_LOGS = [
   "TradeNexus AI Agent System v1.0.0 initialized...",
@@ -93,7 +95,20 @@ const AUDIENCE_TYPES: TargetAudienceType[] = [
 // UPDATED: Increased max lead volume to 100
 const LEAD_COUNT_OPTIONS = [5, 10, 20, 50, 100];
 
-type ViewMode = 'OPERATIONS' | 'DASHBOARD';
+const getDefaultLeadCountForDemand = (demandLevel: RegionSuggestion['demandLevel']) => {
+  if (demandLevel === 'High') return 20;
+  if (demandLevel === 'Medium') return 10;
+  return 5;
+};
+
+const withDefaultScoutTargets = (items: RegionSuggestion[]) => {
+  return items.map(item => ({
+    ...item,
+    targetLeadCount: item.targetLeadCount || getDefaultLeadCountForDemand(item.demandLevel)
+  }));
+};
+
+type ViewMode = 'OPERATIONS' | 'DASHBOARD' | 'PROFILE';
 
 // Auto-Pilot Constants
 const SCOUT_INTERVAL_MS = 60000; // Check every 60 seconds (Demo speed)
@@ -145,6 +160,7 @@ export default function App() {
 
   // Auth State
   const [user, setUser] = useState<User | null>(null);
+  const [supplierProfile, setSupplierProfile] = useState<SupplierProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -191,6 +207,7 @@ export default function App() {
         setSessions(savedSessions);
         sessionsRef.current = savedSessions;
       });
+      getSupplierProfile(user.uid).then(setSupplierProfile);
     } else {
       setSessions([]);
       sessionsRef.current = [];
@@ -198,6 +215,7 @@ export default function App() {
       setLeads([]);
       setSuggestions([]);
       setSearchContext(null);
+      setSupplierProfile(null);
       setProductAssets([]);
       setProductName('');
       setProductDescription('');
@@ -294,6 +312,7 @@ export default function App() {
               
               let scoutRegion = session.config.continent;
               let strategySource = "Broad Search";
+              let scoutLeadCount = session.config.targetLeadCount || 20;
 
               const explicitCountries = session.config.countries || [];
 
@@ -308,6 +327,7 @@ export default function App() {
                   const pool = highPotential.length > 0 ? highPotential : session.suggestions;
                   const target = pool[Math.floor(Math.random() * pool.length)];
                   scoutRegion = target.region;
+                  scoutLeadCount = target.targetLeadCount || getDefaultLeadCountForDemand(target.demandLevel);
                   strategySource = `AI Strategic Target (${target.demandLevel} Demand)`;
               }
 
@@ -319,7 +339,7 @@ export default function App() {
                   description: session.productDescription,
                   targetRegion: scoutRegion,
                   targetCompanySize: session.config.targetCompanySize,
-                  targetLeadCount: session.config.targetLeadCount || 20,
+                  targetLeadCount: scoutLeadCount,
                   targetAudience: session.config.targetAudience, // Use stored audience preference
                   supplierCountry: session.config.supplierCountry,
                   strategicContext: session.strategicContext // Use structured memory
@@ -375,6 +395,26 @@ export default function App() {
 
   const addAgentLog = (msg: string) => {
     setAgentLogs(prev => [...prev, msg]);
+  };
+
+  const startNewCampaign = () => {
+      setActiveSessionId(null);
+      setProductName('');
+      setProductDescription('');
+      setSearchContext(null);
+      setProductAssets([]);
+      setLeads([]);
+      setSuggestions([]);
+      setSelectedLeadId(null);
+      setDeployedRegions(new Set());
+      setView('OPERATIONS');
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(true);
+        setIsLeadsPanelOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+      }
+      addAgentLog(`Started new campaign setup.`);
   };
 
   // TRIGGERED ON FILE UPLOAD
@@ -435,7 +475,7 @@ export default function App() {
       setTargetLeadCount(session.config.targetLeadCount || 20);
       setTargetAudience(session.config.targetAudience || 'All');
       setSupplierCountry(session.config.supplierCountry || 'China');
-      setSuggestions(session.suggestions);
+      setSuggestions(withDefaultScoutTargets(session.suggestions));
       setLeads(session.leads);
       setProductAssets([]); // Clear assets as they are not persisted in session
       // CHANGED: Load the structured memory object
@@ -455,7 +495,7 @@ export default function App() {
               continent,
               countries: selectedCountries,
               targetCompanySize,
-              targetLeadCount,
+              targetLeadCount, // Legacy fallback for saved campaigns and auto-pilot broad searches
               targetAudience,
               supplierCountry
           },
@@ -510,7 +550,7 @@ export default function App() {
 
       // 2. ANALYZE MARKETS (Pass the activeContext)
       // Note: analyzeMarkets expects StrategicContext | undefined
-      const results = await analyzeMarkets(productName, productDescription, continent, selectedCountries, productAssets, activeContext || undefined);
+      const results = withDefaultScoutTargets(await analyzeMarkets(productName, productDescription, continent, selectedCountries, productAssets, activeContext || undefined));
       setSuggestions(results);
       addAgentLog(`Analysis complete. ${results.length} regions identified.`);
       
@@ -576,7 +616,15 @@ export default function App() {
       }
   };
 
-  const deployScout = async (region: string) => {
+  const handleRegionLeadCountChange = (region: string, count: number) => {
+      setSuggestions(prev => {
+          const updated = prev.map(s => s.region === region ? { ...s, targetLeadCount: count } : s);
+          updateActiveSession(leadsRef.current, updated);
+          return updated;
+      });
+  };
+
+  const deployScout = async (region: string, scoutLeadCount: number) => {
     if (deployedRegions.has(region)) return;
 
     setDeployedRegions(prev => new Set(prev).add(region));
@@ -595,7 +643,7 @@ export default function App() {
         description: productDescription,
         targetRegion: region,
         targetCompanySize: targetCompanySize,
-        targetLeadCount: targetLeadCount, // Pass Config
+        targetLeadCount: scoutLeadCount,
         targetAudience: targetAudience, // Pass Audience
         supplierCountry: supplierCountry,
         // We do NOT pass 'assets' here, to prevent re-upload.
@@ -604,7 +652,7 @@ export default function App() {
     };
 
     try {
-        setAgentAction({ type: 'SEARCHING', details: `Scouting ${region} for ${targetLeadCount} verified candidates...` });
+        setAgentAction({ type: 'SEARCHING', details: `Scouting ${region} for ${scoutLeadCount} verified candidates...` });
         
         // 1. Search (Note: searchForLeads internally splits this into 4 territory squads)
         const foundLeads = await searchForLeads(productContext);
@@ -661,6 +709,12 @@ export default function App() {
           setProductAssets([]);
       }
       addAgentLog(`[System] Session deleted.`);
+  };
+
+  const handleSaveSupplierProfile = (profile: SupplierProfile) => {
+      setSupplierProfile(profile);
+      if (user) saveSupplierProfile(user.uid, profile);
+      addAgentLog(`[System] Supplier profile updated.`);
   };
 
   const handleLeadClick = (leadId: string) => {
@@ -737,7 +791,66 @@ export default function App() {
         />
       )}
 
+      {/* PRIMARY NAV RAIL */}
+      <nav className="hidden md:flex w-[88px] shrink-0 bg-slate-950 border-r border-slate-800 flex-col items-center py-10 gap-10">
+        <button
+          onClick={() => {
+            setView('OPERATIONS');
+            setSelectedLeadId(null);
+            setIsSidebarOpen(true);
+          }}
+          className="w-10 h-10 rounded-full bg-primary-500/90 shadow-lg shadow-primary-500/20"
+          aria-label="TradeNexus home"
+          title="TradeNexus"
+        />
+
+        <div className="flex flex-col items-center gap-8">
+          <button
+            onClick={() => {
+              setView('OPERATIONS');
+              setSelectedLeadId(null);
+              setIsSidebarOpen(true);
+            }}
+            className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${
+              view === 'OPERATIONS' || view === 'DASHBOARD'
+                ? 'bg-slate-800 text-slate-200'
+                : 'text-slate-500 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+            aria-label="Operations"
+            title="Operations"
+          >
+            <Home className="w-7 h-7" strokeWidth={2.2} />
+          </button>
+          <button
+            onClick={() => {
+              setView('PROFILE');
+              setSelectedLeadId(null);
+              setIsSidebarOpen(false);
+              setIsLeadsPanelOpen(false);
+            }}
+            className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${
+              view === 'PROFILE'
+                ? 'bg-slate-800 text-slate-200'
+                : 'text-slate-500 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+            aria-label="Supplier profile"
+            title="Supplier profile"
+          >
+            <UserRound className="w-7 h-7" strokeWidth={2.2} />
+          </button>
+          <button
+            onClick={startNewCampaign}
+            className="w-16 h-16 rounded-2xl flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-slate-900 transition-colors"
+            aria-label="Start new campaign"
+            title="Start new campaign"
+          >
+            <Plus className="w-7 h-7" strokeWidth={2.2} />
+          </button>
+        </div>
+      </nav>
+
       {/* COLUMN 1: STRATEGY & CONFIGURATION */}
+      {view !== 'PROFILE' && (
       <div 
         className={`fixed inset-y-0 left-0 z-50 h-full bg-slate-900 flex flex-col transition-all duration-300 shadow-2xl border-r border-slate-800 md:relative md:z-30 ${isSidebarOpen ? 'translate-x-0 w-[85vw] sm:w-80' : '-translate-x-full w-0 md:translate-x-0 md:w-12'}`}
       >
@@ -784,6 +897,12 @@ export default function App() {
                         className={`flex-1 py-3 text-xs font-medium tracking-wide transition-colors ${view === 'DASHBOARD' ? 'bg-slate-800 text-white border-b-2 border-primary-500' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                         DASHBOARD
+                    </button>
+                    <button 
+                        onClick={() => { setView('PROFILE'); setSelectedLeadId(null); setIsSidebarOpen(false); setIsLeadsPanelOpen(false); }}
+                        className={`flex-1 py-3 text-xs font-medium tracking-wide transition-colors md:hidden ${view === 'PROFILE' ? 'bg-slate-800 text-white border-b-2 border-primary-500' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        PROFILE
                     </button>
                 </div>
 
@@ -914,18 +1033,6 @@ export default function App() {
                           </select>
                         </div>
                         
-                        {/* Target Lead Volume */}
-                         <div className="mb-4">
-                          <label className="block text-[10px] text-slate-500 mb-1 font-bold">Lead Volume (Per Search)</label>
-                          <select 
-                            value={targetLeadCount}
-                            onChange={e => setTargetLeadCount(Number(e.target.value))}
-                            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2 text-sm mb-2 text-white"
-                          >
-                            {LEAD_COUNT_OPTIONS.map(num => <option key={num} value={num}>{num} Leads</option>)}
-                          </select>
-                        </div>
-
                         {/* Region & Countries */}
                         <div className="mb-4">
                           <label className="block text-[10px] text-slate-500 mb-1 font-bold">Region</label>
@@ -981,6 +1088,7 @@ export default function App() {
             </div>
         )}
       </div>
+      )}
 
       {/* COLUMN 2: ACTIVE LEADS */}
       {view === 'OPERATIONS' && (
@@ -1057,6 +1165,8 @@ export default function App() {
 
         {view === 'DASHBOARD' ? (
             <Dashboard sessions={sessions} onToggleAutoPilot={toggleAutoPilot} onDeleteSession={handleDeleteSession} />
+        ) : view === 'PROFILE' ? (
+            <SupplierProfileView profile={supplierProfile} onSave={handleSaveSupplierProfile} />
         ) : (
             <>
                 <div className={`flex-1 ${selectedLead ? 'overflow-hidden' : 'overflow-y-auto p-4 md:p-6'} flex flex-col`}>
@@ -1081,6 +1191,7 @@ export default function App() {
                                 const isDeployed = deployedRegions.has(sug.region);
                                 const isReportLoading = sug.reportStatus === 'LOADING';
                                 const isReportReady = sug.reportStatus === 'READY';
+                                const scoutLeadCount = sug.targetLeadCount || getDefaultLeadCountForDemand(sug.demandLevel);
 
                                 return (
                                     <div key={idx} className={`relative p-5 rounded-lg border flex flex-col transition-all duration-300 ${isDeployed ? 'bg-slate-900/80 border-primary-900/50' : 'bg-slate-900 border-slate-800 hover:border-slate-600 hover:shadow-xl'}`}>
@@ -1089,6 +1200,21 @@ export default function App() {
                                             <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide border ${sug.demandLevel === 'High' ? 'bg-green-950 border-green-900 text-green-400' : 'bg-yellow-950 border-yellow-900 text-yellow-400'}`}>{sug.demandLevel} Demand</span>
                                         </div>
                                         <p className="text-sm text-slate-400 mb-6 flex-1 leading-relaxed">{sug.reason}</p>
+
+                                        <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950/70 px-4 py-3 mb-4">
+                                            <label htmlFor={`lead-target-${idx}`} className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">
+                                                Scout Target (Leads):
+                                            </label>
+                                            <select
+                                                id={`lead-target-${idx}`}
+                                                value={scoutLeadCount}
+                                                disabled={isDeployed}
+                                                onChange={(e) => handleRegionLeadCountChange(sug.region, Number(e.target.value))}
+                                                className="w-24 shrink-0 bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                {LEAD_COUNT_OPTIONS.map(num => <option key={num} value={num}>{num}</option>)}
+                                            </select>
+                                        </div>
                                         
                                         <div className="grid grid-cols-2 gap-2 mt-auto">
                                             <button 
@@ -1109,7 +1235,7 @@ export default function App() {
                                                 )}
                                             </button>
                                             <button 
-                                                onClick={() => deployScout(sug.region)} 
+                                                onClick={() => deployScout(sug.region, scoutLeadCount)} 
                                                 disabled={isDeployed} 
                                                 className={`py-3 rounded text-sm font-semibold transition-all ${isDeployed ? 'bg-slate-950 border border-slate-800 text-primary-500 cursor-default' : 'bg-primary-600 hover:bg-primary-500 text-white shadow-lg'}`}
                                             >

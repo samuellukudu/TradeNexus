@@ -1,7 +1,7 @@
 
-import { SearchSession } from '../types';
+import { SearchSession, SupplierProfile } from '../types';
 import { db } from './firebase';
-import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 
 enum OperationType {
   CREATE = 'create',
@@ -83,5 +83,34 @@ export const deleteSession = async (userId: string, sessionId: string) => {
   } catch (error) {
       console.error("Failed to delete session", error);
       handleFirestoreError(error, OperationType.DELETE, pathForWrite);
+  }
+};
+
+export const getSupplierProfile = async (userId: string): Promise<SupplierProfile | null> => {
+  if (!userId) return null;
+  const pathForGet = `users/${userId}/profile/supplier`;
+  try {
+    const snapshot = await getDoc(doc(db, pathForGet));
+    return snapshot.exists() ? snapshot.data() as SupplierProfile : null;
+  } catch (error) {
+    console.error("Failed to load supplier profile", error);
+    handleFirestoreError(error, OperationType.GET, pathForGet);
+    return null;
+  }
+};
+
+export const saveSupplierProfile = async (userId: string, profile: SupplierProfile) => {
+  if (!userId) return;
+  const pathForWrite = `users/${userId}/profile/supplier`;
+  try {
+    const profileData = JSON.parse(JSON.stringify({
+      ...profile,
+      userId,
+      updatedAt: Date.now()
+    }));
+    await setDoc(doc(db, pathForWrite), profileData);
+  } catch (error) {
+    console.error("Failed to save supplier profile", error);
+    handleFirestoreError(error, OperationType.WRITE, pathForWrite);
   }
 };

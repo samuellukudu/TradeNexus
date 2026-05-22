@@ -7,6 +7,16 @@ export interface ProductAsset {
 
 export type TargetAudienceType = 'Distributors/Importers' | 'OEMs/Manufacturers' | 'End Users' | 'All';
 
+export interface SupplierProfile {
+  companyName: string;
+  website?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  companyDescription?: string;
+  valueProposition?: string;
+}
+
 // NEW: Structured Memory Block
 export interface StrategicContext {
   productIdentity: string;
@@ -69,6 +79,7 @@ export interface RegionSuggestion {
   region: string;
   reason: string;
   demandLevel: 'High' | 'Medium' | 'Low';
+  targetLeadCount?: number;
   reportStatus?: 'IDLE' | 'LOADING' | 'READY' | 'ERROR';
   report?: MarketReport;
 }

@@ -21,6 +21,14 @@ service cloud.firestore {
              data.config is map;
     }
 
+    function isValidSupplierProfile(data) {
+      return data.keys().hasAll(['userId', 'companyName']) &&
+             data.userId == request.auth.uid &&
+             data.userId is string &&
+             data.companyName is string &&
+             data.companyName.size() <= 200;
+    }
+
     match /users/{userId}/sessions/{sessionId} {
       allow get: if isSignedIn() && request.auth.uid == userId;
       allow list: if isSignedIn() && request.auth.uid == userId;
@@ -33,6 +41,13 @@ service cloud.firestore {
                        incoming().userId == existing().userId &&
                        incoming().createdAt == existing().createdAt;
       allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(sessionId);
+    }
+
+    match /users/{userId}/profile/{profileId} {
+      allow get: if isSignedIn() && request.auth.uid == userId && profileId == "supplier";
+      allow create, update: if isSignedIn() && request.auth.uid == userId &&
+                              profileId == "supplier" &&
+                              isValidSupplierProfile(incoming());
     }
   }
 }

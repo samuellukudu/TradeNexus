@@ -76,7 +76,6 @@ export async function discoverSocialForCompany(
   website?: string,
   productContext?: StrategicContext
 ): Promise<SocialProfileEvidence[]> {
-  const ai = getAiClient();
   const now = Date.now();
 
   const productHint = productContext
@@ -133,6 +132,7 @@ export async function discoverSocialForCompany(
   `;
 
   try {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: GROUNDING_MODEL,
       contents: { parts: [{ text: prompt }] },

@@ -5,6 +5,9 @@ import { Lead, StrategicContext, ChatMessage, LeadStatus } from '../types';
 import { generateProspectingMessage } from '../services/geminiService';
 import { discoverSocialForCompany, discoverLeadsFromSocial } from '../services/agent/socialDiscoveryService';
 import type { SocialProfileEvidence } from '../types/evidenceTypes';
+import { verifyLead } from '../services/agent/verificationService';
+import { scoreLead } from '../services/agent/leadScoringService';
+import type { LeadVerification, LeadScoreBreakdown } from '../types/evidenceTypes';
 
 interface InteractionViewerProps {
   lead: Lead;
@@ -21,6 +24,8 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isDiscoveringSocial, setIsDiscoveringSocial] = useState(false);
   const [socialDiscoveryError, setSocialDiscoveryError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isScoring, setIsScoring] = useState(false);
 
   const handleStatusChange = (newStatus: LeadStatus) => {
       if (onUpdateLead) {
@@ -551,6 +556,147 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                             ) : (
                               <p className="text-[10px] text-slate-600">No social profiles discovered yet.</p>
                             )
+                          )}
+                        </div>
+
+                        {/* Verification Status — Phase 4 */}
+                        <div className="mb-6">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-[10px] font-bold text-slate-600 uppercase">Verification</h4>
+                            <button
+                              onClick={async () => {
+                                if (!onUpdateLead || isVerifying) return;
+                                setIsVerifying(true);
+                                try {
+                                  const verification = await verifyLead(lead, productContext as any);
+                                  onUpdateLead({
+                                    ...lead,
+                                    verification,
+                                    lastAgentAction: 'verifyLead',
+                                  });
+                                } catch (e) {
+                                  console.error('Verification failed:', e);
+                                } finally {
+                                  setIsVerifying(false);
+                                }
+                              }}
+                              disabled={isVerifying}
+                              className="px-2 py-1 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-600/30 rounded text-[10px] text-purple-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isVerifying ? 'Verifying...' : 'Verify Lead'}
+                            </button>
+                          </div>
+
+                          {lead.verification ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                  lead.verification.status === 'VERIFIED' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' :
+                                  lead.verification.status === 'PARTIAL' ? 'bg-yellow-900/30 text-yellow-400 border-yellow-800/50' :
+                                  lead.verification.status === 'FAILED' ? 'bg-red-900/30 text-red-400 border-red-800/50' :
+                                  'bg-slate-800/30 text-slate-400 border-slate-700/30'
+                                }`}>
+                                  {lead.verification.status}
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  Confidence: {Math.round(lead.verification.confidence * 100)}%
+                                </span>
+                              </div>
+                              {lead.verification.checks && lead.verification.checks.length > 0 && (
+                                <div className="space-y-1">
+                                  {lead.verification.checks.map((check, i) => (
+                                    <div key={check.id || i} className="flex items-center justify-between p-2 bg-slate-800/40 rounded border border-slate-700/40">
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-[9px] w-12 text-center px-1 py-0.5 rounded ${
+                                          check.status === 'PASS' ? 'bg-emerald-900/20 text-emerald-400' :
+                                          check.status === 'FAIL' ? 'bg-red-900/20 text-red-400' :
+                                          check.status === 'WARNING' ? 'bg-yellow-900/20 text-yellow-400' :
+                                          'bg-slate-700/20 text-slate-500'
+                                        }`}>
+                                          {check.status}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400">{check.type.replace(/_/g, ' ')}</span>
+                                      </div>
+                                      <span className="text-[9px] text-slate-600">{Math.round(check.confidence * 100)}%</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-600">Not verified yet.</p>
+                          )}
+                        </div>
+
+                        {/* Lead Scoring — Phase 4 */}
+                        <div className="mb-6">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-[10px] font-bold text-slate-600 uppercase">Lead Score</h4>
+                            <button
+                              onClick={async () => {
+                                if (!onUpdateLead || isScoring) return;
+                                setIsScoring(true);
+                                try {
+                                  const scoreBreakdown = await scoreLead(lead, productContext as any);
+                                  onUpdateLead({
+                                    ...lead,
+                                    scoreBreakdown,
+                                    lastAgentAction: 'scoreLead',
+                                  });
+                                } catch (e) {
+                                  console.error('Scoring failed:', e);
+                                } finally {
+                                  setIsScoring(false);
+                                }
+                              }}
+                              disabled={isScoring}
+                              className="px-2 py-1 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-600/30 rounded text-[10px] text-amber-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isScoring ? 'Scoring...' : 'Score Lead'}
+                            </button>
+                          </div>
+
+                          {lead.scoreBreakdown ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-lg font-bold" style={{ color: lead.scoreBreakdown.overall >= 80 ? '#34d399' : lead.scoreBreakdown.overall >= 60 ? '#fbbf24' : lead.scoreBreakdown.overall >= 40 ? '#f97316' : '#ef4444' }}>
+                                  {lead.scoreBreakdown.overall}/100
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  {lead.scoreBreakdown.overall >= 80 ? 'Strong' : lead.scoreBreakdown.overall >= 60 ? 'Good' : lead.scoreBreakdown.overall >= 40 ? 'Fair' : 'Weak'}
+                                </span>
+                              </div>
+                              {([
+                                ['locationFit', 'Location'],
+                                ['productFit', 'Product Fit'],
+                                ['buyerTypeFit', 'Buyer Type'],
+                                ['companySizeFit', 'Size'],
+                                ['evidenceQuality', 'Evidence'],
+                                ['socialActivity', 'Social'],
+                                ['contactability', 'Contact'],
+                                ['competitiveOpportunity', 'Competition'],
+                                ['freshness', 'Freshness'],
+                              ] as [string, string][]).map(([key, label]) => {
+                                const value = (lead.scoreBreakdown as any)[key] as number;
+                                const color = value >= 80 ? '#34d399' : value >= 60 ? '#fbbf24' : value >= 40 ? '#f97316' : '#ef4444';
+                                return (
+                                  <div key={key} className="flex items-center gap-2">
+                                    <span className="text-[10px] text-slate-400 w-20 flex-shrink-0">{label}</span>
+                                    <div className="flex-1 h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                                      <div className="h-full rounded-full transition-all" style={{ width: `${value}%`, backgroundColor: color }} />
+                                    </div>
+                                    <span className="text-[10px] text-slate-500 w-6 text-right">{value}</span>
+                                  </div>
+                                );
+                              })}
+                              {lead.scoreBreakdown.rationale && (
+                                <p className="text-[10px] text-slate-500 mt-2 leading-relaxed border-t border-slate-700/50 pt-2">
+                                  {lead.scoreBreakdown.rationale}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-600">Not scored yet.</p>
                           )}
                         </div>
                     </div>

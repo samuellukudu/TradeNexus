@@ -82,6 +82,11 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, isActive }) =
                   📍 {lead.searchVector.replace('Territory Scout: ', '')}
               </span>
           )}
+          {(lead.socialDiscovery && lead.socialDiscovery.length > 0) || (lead.socialProfiles && lead.socialProfiles.length > 0) ? (
+            <span className="text-[10px]" title="Social profiles found">
+              👥
+            </span>
+          ) : null}
       </div>
       
       <p className="text-slate-400 text-sm mb-3 line-clamp-2">

@@ -3,6 +3,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Lead, StrategicContext, ChatMessage, LeadStatus } from '../types';
 import { generateProspectingMessage } from '../services/geminiService';
+import { discoverSocialForCompany } from '../services/agent/socialDiscoveryService';
+import type { SocialProfileEvidence } from '../types/evidenceTypes';
 
 interface InteractionViewerProps {
   lead: Lead;
@@ -419,19 +421,93 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                             </ul>
                         </div>
 
-                        {/* Socials */}
-                        {lead.socialProfiles && lead.socialProfiles.length > 0 && (
-                            <div>
-                                 <h4 className="text-[10px] font-bold text-slate-600 uppercase mb-2">Social Presence</h4>
-                                 <div className="flex flex-wrap gap-2">
-                                     {lead.socialProfiles.map((social, i) => (
-                                         <a key={i} href={social.url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-slate-300 transition-colors">
-                                             {social.platform}
-                                         </a>
-                                     ))}
-                                 </div>
+                        {/* Social Presence — Enhanced for Phase 2 */}
+                        <div className="mb-6">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-[10px] font-bold text-slate-600 uppercase">Social Presence</h4>
+                            <button
+                              onClick={async () => {
+                                if (!onUpdateLead) return;
+                                try {
+                                  const profiles = await discoverSocialForCompany(
+                                    lead.companyName,
+                                    lead.region,
+                                    lead.website
+                                  );
+                                  if (profiles.length > 0) {
+                                    onUpdateLead({
+                                      ...lead,
+                                      socialDiscovery: profiles,
+                                      lastAgentAction: 'socialDiscovery',
+                                    });
+                                  }
+                                } catch (e) {
+                                  console.error('Social discovery failed:', e);
+                                }
+                              }}
+                              className="px-2 py-1 bg-primary-600/20 hover:bg-primary-600/40 border border-primary-600/30 rounded text-[10px] text-primary-400 font-medium transition-colors"
+                            >
+                              Find Social Profiles
+                            </button>
+                          </div>
+
+                          {/* Show SocialProfileEvidence if available */}
+                          {lead.socialDiscovery && lead.socialDiscovery.length > 0 ? (
+                            <div className="space-y-2">
+                              {lead.socialDiscovery.map((sp: SocialProfileEvidence, i: number) => (
+                                <a
+                                  key={sp.id || i}
+                                  href={sp.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="block p-3 bg-slate-800/60 hover:bg-slate-800 rounded border border-slate-700/60 transition-colors"
+                                >
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs font-bold text-white capitalize">{sp.platform}</span>
+                                    <div className="flex items-center gap-2">
+                                      {sp.isOfficialLikely && (
+                                        <span className="text-[9px] bg-emerald-900/50 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-800/50">Official</span>
+                                      )}
+                                      <span className={`text-[9px] px-1.5 py-0.5 rounded border ${
+                                        sp.activityLevel === 'HIGH' ? 'bg-green-900/30 text-green-400 border-green-800/50' :
+                                        sp.activityLevel === 'MEDIUM' ? 'bg-yellow-900/30 text-yellow-400 border-yellow-800/50' :
+                                        sp.activityLevel === 'LOW' ? 'bg-slate-700/30 text-slate-400 border-slate-700/50' :
+                                        'bg-slate-800/30 text-slate-500 border-slate-700/30'
+                                      }`}>
+                                        {sp.activityLevel}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {sp.relevanceNotes && (
+                                    <p className="text-[10px] text-slate-400 leading-relaxed">{sp.relevanceNotes}</p>
+                                  )}
+                                  {sp.contactHints && sp.contactHints.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                      {sp.contactHints.map((hint: string, j: number) => (
+                                        <span key={j} className="text-[9px] bg-blue-900/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-800/30">
+                                          {hint}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </a>
+                              ))}
                             </div>
-                        )}
+                          ) : (
+                            /* Fallback: show legacy socialProfiles if no socialDiscovery yet */
+                            lead.socialProfiles && lead.socialProfiles.length > 0 ? (
+                              <div className="flex flex-wrap gap-2">
+                                {lead.socialProfiles.map((social, i) => (
+                                  <a key={i} href={social.url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-slate-300 transition-colors">
+                                    {social.platform}
+                                  </a>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-slate-600">No social profiles discovered yet.</p>
+                            )
+                          )}
+                        </div>
                     </div>
                  )}
 

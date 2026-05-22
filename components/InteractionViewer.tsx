@@ -3,7 +3,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Lead, StrategicContext, ChatMessage, LeadStatus } from '../types';
 import { generateProspectingMessage } from '../services/geminiService';
-import { discoverSocialForCompany } from '../services/agent/socialDiscoveryService';
+import { discoverSocialForCompany, discoverLeadsFromSocial } from '../services/agent/socialDiscoveryService';
 import type { SocialProfileEvidence } from '../types/evidenceTypes';
 
 interface InteractionViewerProps {
@@ -427,37 +427,69 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                         <div className="mb-6">
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="text-[10px] font-bold text-slate-600 uppercase">Social Presence</h4>
-                            <button
-                              onClick={async () => {
-                                if (!onUpdateLead || isDiscoveringSocial) return;
-                                setIsDiscoveringSocial(true);
-                                setSocialDiscoveryError(null);
-                                try {
-                                  const profiles = await discoverSocialForCompany(
-                                    lead.companyName,
-                                    lead.region,
-                                    lead.website,
-                                    productContext
-                                  );
-                                  if (profiles.length > 0) {
-                                    onUpdateLead({
-                                      ...lead,
-                                      socialDiscovery: profiles,
-                                      lastAgentAction: 'socialDiscovery',
-                                    });
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={async () => {
+                                  if (!onUpdateLead || isDiscoveringSocial) return;
+                                  setIsDiscoveringSocial(true);
+                                  setSocialDiscoveryError(null);
+                                  try {
+                                    const profiles = await discoverSocialForCompany(
+                                      lead.companyName,
+                                      lead.region,
+                                      lead.website,
+                                      productContext
+                                    );
+                                    if (profiles.length > 0) {
+                                      onUpdateLead({
+                                        ...lead,
+                                        socialDiscovery: profiles,
+                                        lastAgentAction: 'socialDiscovery',
+                                      });
+                                    }
+                                  } catch (e) {
+                                    console.error('Social discovery failed:', e);
+                                    setSocialDiscoveryError('Discovery failed. Try again.');
+                                  } finally {
+                                    setIsDiscoveringSocial(false);
                                   }
-                                } catch (e) {
-                                  console.error('Social discovery failed:', e);
-                                  setSocialDiscoveryError('Discovery failed. Try again.');
-                                } finally {
-                                  setIsDiscoveringSocial(false);
-                                }
-                              }}
-                              disabled={isDiscoveringSocial}
-                              className="px-2 py-1 bg-primary-600/20 hover:bg-primary-600/40 border border-primary-600/30 rounded text-[10px] text-primary-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isDiscoveringSocial ? 'Searching...' : 'Find Social Profiles'}
-                            </button>
+                                }}
+                                disabled={isDiscoveringSocial}
+                                className="px-2 py-1 bg-primary-600/20 hover:bg-primary-600/40 border border-primary-600/30 rounded text-[10px] text-primary-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {isDiscoveringSocial ? 'Searching...' : 'Find Social Profiles'}
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!onUpdateLead || isDiscoveringSocial) return;
+                                  setIsDiscoveringSocial(true);
+                                  setSocialDiscoveryError(null);
+                                  try {
+                                    const result = await discoverLeadsFromSocial(
+                                      lead.companyName,
+                                      lead.region,
+                                      productContext
+                                    );
+                                    if (result.profiles.length > 0) {
+                                      onUpdateLead({
+                                        ...lead,
+                                        socialDiscovery: result.profiles,
+                                        lastAgentAction: 'socialDiscovery',
+                                      });
+                                    }
+                                  } catch (e) {
+                                    console.error('Social lead discovery failed:', e);
+                                    setSocialDiscoveryError('Discovery failed. Try again.');
+                                  } finally {
+                                    setIsDiscoveringSocial(false);
+                                  }
+                                }}
+                                disabled={isDiscoveringSocial}
+                                className="px-2 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-600/30 rounded text-[10px] text-emerald-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {isDiscoveringSocial ? 'Searching...' : 'Discover Similar'}
+                              </button>
+                            </div>
                           </div>
 
                           {socialDiscoveryError && (

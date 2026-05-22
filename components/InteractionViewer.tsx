@@ -19,6 +19,8 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
   const [activeTab, setActiveTab] = useState<'logs' | 'chat' | 'dossier'>('chat');
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isDiscoveringSocial, setIsDiscoveringSocial] = useState(false);
+  const [socialDiscoveryError, setSocialDiscoveryError] = useState<string | null>(null);
 
   const handleStatusChange = (newStatus: LeadStatus) => {
       if (onUpdateLead) {
@@ -427,12 +429,15 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                             <h4 className="text-[10px] font-bold text-slate-600 uppercase">Social Presence</h4>
                             <button
                               onClick={async () => {
-                                if (!onUpdateLead) return;
+                                if (!onUpdateLead || isDiscoveringSocial) return;
+                                setIsDiscoveringSocial(true);
+                                setSocialDiscoveryError(null);
                                 try {
                                   const profiles = await discoverSocialForCompany(
                                     lead.companyName,
                                     lead.region,
-                                    lead.website
+                                    lead.website,
+                                    productContext
                                   );
                                   if (profiles.length > 0) {
                                     onUpdateLead({
@@ -443,13 +448,21 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                                   }
                                 } catch (e) {
                                   console.error('Social discovery failed:', e);
+                                  setSocialDiscoveryError('Discovery failed. Try again.');
+                                } finally {
+                                  setIsDiscoveringSocial(false);
                                 }
                               }}
-                              className="px-2 py-1 bg-primary-600/20 hover:bg-primary-600/40 border border-primary-600/30 rounded text-[10px] text-primary-400 font-medium transition-colors"
+                              disabled={isDiscoveringSocial}
+                              className="px-2 py-1 bg-primary-600/20 hover:bg-primary-600/40 border border-primary-600/30 rounded text-[10px] text-primary-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              Find Social Profiles
+                              {isDiscoveringSocial ? 'Searching...' : 'Find Social Profiles'}
                             </button>
                           </div>
+
+                          {socialDiscoveryError && (
+                            <p className="text-[10px] text-red-400 mb-2">{socialDiscoveryError}</p>
+                          )}
 
                           {/* Show SocialProfileEvidence if available */}
                           {lead.socialDiscovery && lead.socialDiscovery.length > 0 ? (

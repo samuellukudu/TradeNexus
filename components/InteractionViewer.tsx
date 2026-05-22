@@ -8,8 +8,10 @@ import type { SocialProfileEvidence } from '../types/evidenceTypes';
 import { verifyLead } from '../services/agent/verificationService';
 import { scoreLead } from '../services/agent/leadScoringService';
 import { getNextBestActions } from '../services/agent/nextBestActionService';
+import { getClosingStrategy, generateOutreachDraft } from '../services/agent/outreachService';
 import type { LeadVerification, LeadScoreBreakdown } from '../types/evidenceTypes';
-import type { AgentRecommendation } from '../types/agentTypes';
+import type { AgentRecommendation, OutreachDraft } from '../types/agentTypes';
+import type { ClosingStrategy } from '../server/agent/outreach/closingStrategy';
 
 interface InteractionViewerProps {
   lead: Lead;
@@ -29,6 +31,9 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
   const [isVerifying, setIsVerifying] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
   const [isGettingRecommendations, setIsGettingRecommendations] = useState(false);
+  const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
+  const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
+  const [outreachError, setOutreachError] = useState<string | null>(null);
 
   const handleStatusChange = (newStatus: LeadStatus) => {
       if (onUpdateLead) {
@@ -756,6 +761,140 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                             </div>
                           ) : (
                             <p className="text-[10px] text-slate-600">No recommendations yet.</p>
+                          )}
+                        </div>
+
+                        {/* Outreach Strategy & Drafts — Phase 6 */}
+                        <div className="mb-6">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-[10px] font-bold text-slate-600 uppercase">Outreach Strategy</h4>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={async () => {
+                                  if (!onUpdateLead || isGeneratingStrategy) return;
+                                  setIsGeneratingStrategy(true);
+                                  setOutreachError(null);
+                                  try {
+                                    const strategy = await getClosingStrategy(lead, productContext as any);
+                                    onUpdateLead({
+                                      ...lead,
+                                      lastAgentAction: 'generateClosingStrategy',
+                                      ...({ _closingStrategy: strategy } as any),
+                                    });
+                                  } catch (e) {
+                                    console.error('Strategy generation failed:', e);
+                                    setOutreachError('Strategy generation failed.');
+                                  } finally {
+                                    setIsGeneratingStrategy(false);
+                                  }
+                                }}
+                                disabled={isGeneratingStrategy}
+                                className="px-2 py-1 bg-teal-600/20 hover:bg-teal-600/40 border border-teal-600/30 rounded text-[10px] text-teal-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {isGeneratingStrategy ? 'Analyzing...' : 'Get Strategy'}
+                              </button>
+                              {(lead as any)._closingStrategy && (
+                                <button
+                                  onClick={async () => {
+                                    if (!onUpdateLead || isGeneratingDraft) return;
+                                    setIsGeneratingDraft(true);
+                                    setOutreachError(null);
+                                    try {
+                                      const strategy = (lead as any)._closingStrategy as ClosingStrategy;
+                                      const draft = await generateOutreachDraft(lead, strategy.recommendedPlatform, strategy, productContext);
+                                      const drafts = [...(lead.outreachDrafts || []), draft];
+                                      onUpdateLead({
+                                        ...lead,
+                                        outreachDrafts: drafts,
+                                        lastAgentAction: 'generateOutreachDraft',
+                                      } as any);
+                                    } catch (e) {
+                                      console.error('Draft generation failed:', e);
+                                      setOutreachError('Draft generation failed.');
+                                    } finally {
+                                      setIsGeneratingDraft(false);
+                                    }
+                                  }}
+                                  disabled={isGeneratingDraft}
+                                  className="px-2 py-1 bg-pink-600/20 hover:bg-pink-600/40 border border-pink-600/30 rounded text-[10px] text-pink-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isGeneratingDraft ? 'Drafting...' : 'Generate Draft'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {outreachError && (
+                            <p className="text-[10px] text-red-400 mb-2">{outreachError}</p>
+                          )}
+
+                          {(lead as any)._closingStrategy ? (
+                            <div className="mb-3 p-3 bg-teal-900/20 rounded border border-teal-800/30">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold text-teal-400">
+                                  {((lead as any)._closingStrategy as ClosingStrategy).type.replace(/_/g, ' ')}
+                                </span>
+                                <span className="text-[9px] text-teal-600">
+                                  {((lead as any)._closingStrategy as ClosingStrategy).confidence}% confidence
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-400 leading-relaxed mb-2">
+                                {((lead as any)._closingStrategy as ClosingStrategy).rationale}
+                              </p>
+                              <div className="space-y-1">
+                                {((lead as any)._closingStrategy as ClosingStrategy).keyTalkingPoints.map((point: string, i: number) => (
+                                  <div key={i} className="flex items-start gap-1.5">
+                                    <span className="text-[9px] text-teal-500 mt-0.5">•</span>
+                                    <span className="text-[10px] text-slate-300">{point}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-600 mb-3">Generate a closing strategy first.</p>
+                          )}
+
+                          {lead.outreachDrafts && lead.outreachDrafts.length > 0 && (
+                            <div className="space-y-2">
+                              <h5 className="text-[9px] font-bold text-slate-500 uppercase">Generated Drafts</h5>
+                              {lead.outreachDrafts.map((draft: OutreachDraft, i: number) => (
+                                <div key={draft.id || i} className="p-3 bg-slate-800/60 rounded border border-slate-700/60">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[9px] bg-slate-700/50 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700/50 capitalize">
+                                        {draft.type.replace(/_/g, ' ')}
+                                      </span>
+                                      {draft.approved ? (
+                                        <span className="text-[9px] bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-800/50">Approved</span>
+                                      ) : (
+                                        <span className="text-[9px] bg-yellow-900/30 text-yellow-400 px-1.5 py-0.5 rounded border border-yellow-800/50">Pending</span>
+                                      )}
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        if (!onUpdateLead) return;
+                                        const updated = lead.outreachDrafts?.map((d, idx) =>
+                                          idx === i ? { ...d, approved: !d.approved } : d
+                                        ) || [];
+                                        onUpdateLead({ ...lead, outreachDrafts: updated, lastAgentAction: 'toggleDraftApproval' });
+                                      }}
+                                      className="text-[9px] text-slate-500 hover:text-white transition-colors"
+                                    >
+                                      {draft.approved ? 'Unapprove' : 'Approve'}
+                                    </button>
+                                  </div>
+                                  {draft.subject && (
+                                    <p className="text-[10px] font-bold text-slate-300 mb-1">{draft.subject}</p>
+                                  )}
+                                  <p className="text-[10px] text-slate-400 leading-relaxed whitespace-pre-wrap">{draft.body}</p>
+                                  {draft.evidenceIds && draft.evidenceIds.length > 0 && (
+                                    <p className="text-[9px] text-slate-600 mt-2">
+                                      Evidence: {draft.evidenceIds.length} references cited
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
                     </div>

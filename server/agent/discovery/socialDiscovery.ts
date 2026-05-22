@@ -3,7 +3,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { v4 as uuidv4 } from 'uuid';
-import type { SocialProfileEvidence, SocialPlatform, SocialProfileType, SocialActivityLevel, StrategicContext } from '../types.js';
+import type { SocialProfileEvidence, SocialPlatform, SocialProfileType, SocialActivityLevel, StrategicContext, EvidenceSourceType } from '../types.js';
 import fs from "node:fs";
 import path from "node:path";
 
@@ -180,9 +180,124 @@ export async function discoverSocialForCompany(
 }
 
 export async function discoverLeadsFromSocial(
-  _productName: string,
-  _region: string,
-  _productContext?: StrategicContext
+  productName: string,
+  region: string,
+  productContext?: StrategicContext
 ): Promise<SocialProfileEvidence[]> {
-  throw new Error("Social-first lead discovery not yet implemented (Phase 3)");
+  const now = Date.now();
+
+  const productHint = productContext
+    ? `Product: ${productContext.productIdentity}. Ideal buyer: ${productContext.idealBuyer}. Value proposition: ${productContext.valueProposition}.`
+    : `Product: ${productName}.`;
+  const excludeHint = productContext?.exclusions
+    ? `EXCLUDE these company types: ${productContext.exclusions}.`
+    : '';
+
+  const prompt = `
+    You are a B2B Sales Intelligence Researcher. Your job is to find potential buyer or distributor companies in a target region by searching for their social media presence.
+
+    PRODUCT TO SELL: ${productName}
+    TARGET REGION: ${region}
+    ${productHint}
+    ${excludeHint}
+
+    TASK: Search social media platforms (LinkedIn, Facebook, Instagram, YouTube, TikTok, X) for companies in ${region} that could be potential buyers, distributors, or importers of ${productName}.
+
+    For each company you find, provide their social profile details. Focus on:
+    1. Companies that match the ideal buyer profile
+    2. Companies with active social media presence (indicates they're real businesses)
+    3. Companies in the specified region
+
+    PROFILE TYPES:
+    - "company" — Official company page or business profile
+    - "employee" — Individual employee or founder profile (useful for contact)
+    - "reseller" — A distributor/reseller page
+    - "community" — Fan page, group, or industry community
+    - "unknown" — Cannot determine
+
+    ACTIVITY LEVELS:
+    - "HIGH" — Recent posts (within last month), active engagement visible
+    - "MEDIUM" — Profile exists, some activity but not frequent
+    - "LOW" — Profile exists but appears inactive or very sparse
+    - "UNKNOWN" — Cannot assess activity from available data
+
+    CONFIDENCE (0.0 to 1.0):
+    - 0.9-1.0: Company clearly matches buyer profile, verified in target region
+    - 0.7-0.89: Strong match — right industry, likely in region
+    - 0.5-0.69: Partial match — could be relevant
+    - 0.3-0.49: Weak match — might be tangentially related
+    - 0.0-0.29: Very uncertain
+
+    Return a JSON object with a "profiles" array. Each profile object must have these keys:
+    - companyName: string — the company name as it appears on the profile
+    - platform: "linkedin", "facebook", "instagram", "youtube", "tiktok", "x", or "other"
+    - url: full profile URL
+    - handle: username or handle (if visible)
+    - isOfficialLikely: boolean — true if this appears to be the official company profile
+    - profileType: "company", "employee", "founder", "reseller", "community", or "unknown"
+    - activityLevel: "HIGH", "MEDIUM", "LOW", or "UNKNOWN"
+    - activityEvidence: short description of what activity is visible
+    - contactHints: array of strings — any contact info visible (email, phone, WhatsApp, website)
+    - relevanceNotes: why this company is a good (or bad) match for the product
+    - confidence: number 0-1
+    - employeeCount: string — rough size indication if visible (e.g., "10-50", "50-200")
+    - website: string — company website if visible on the profile (empty string if not found)
+
+    AIM FOR 8-15 RESULTS. Focus on quality over quantity — prefer real, active companies.
+    IMPORTANT: Only include companies you actually found. Do not fabricate.
+    Return ONLY the raw JSON object, no markdown wrapping.
+  `;
+
+  try {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+      model: GROUNDING_MODEL,
+      contents: { parts: [{ text: prompt }] },
+      config: {
+        ...buildThinkingConfig(GROUNDING_MODEL),
+        tools: [{ googleSearch: {} }]
+      }
+    });
+
+    if (!response.text) {
+      console.error(`[SocialDiscovery] Empty response for ${productName} in ${region}`);
+      return [];
+    }
+
+    const parsed = extractJsonFromText(response.text);
+    if (!parsed || !Array.isArray(parsed.profiles)) {
+      console.error(`[SocialDiscovery] Failed to parse leads for ${productName} in ${region}`);
+      return [];
+    }
+
+    return parsed.profiles.map((p: any) => ({
+      id: uuidv4(),
+      sourceType: (p.platform as EvidenceSourceType) || 'other',
+      url: p.url || '',
+      title: p.companyName || `${productName} lead`,
+      snippet: p.relevanceNotes,
+      confidence: typeof p.confidence === 'number' ? p.confidence : 0.5,
+      foundAt: now,
+      foundBy: 'socialDiscovery',
+      validationStatus: 'UNVERIFIED' as const,
+      platform: p.platform || 'other',
+      handle: p.handle,
+      isOfficialLikely: Boolean(p.isOfficialLikely),
+      profileType: (p.profileType as SocialProfileType) || 'unknown',
+      activityLevel: (p.activityLevel as SocialActivityLevel) || 'UNKNOWN',
+      activityEvidence: p.activityEvidence,
+      contactHints: Array.isArray(p.contactHints) ? p.contactHints : [],
+      relevanceNotes: p.relevanceNotes,
+      extractedFields: {
+        companyName: p.companyName || '',
+        website: p.website || '',
+        region: region,
+        employeeCount: p.employeeCount || '',
+      },
+    }));
+
+  } catch (error) {
+    console.error(`[SocialDiscovery] Error discovering leads for ${productName} in ${region}:`, error);
+    return [];
+  }
 }

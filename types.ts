@@ -1,3 +1,5 @@
+import { DiscoveryEvidence, SocialProfileEvidence, LeadVerification, LeadScoreBreakdown } from './types/evidenceTypes';
+import { AgentRecommendation, OutreachDraft, AgentPlan, CampaignMemory } from './types/agentTypes';
 
 export interface ProductAsset {
   data: string; // Base64 string without data prefix
@@ -152,6 +154,17 @@ export interface Lead {
   verificationStatus?: 'UNVERIFIED' | 'VERIFYING' | 'VERIFIED' | 'FAILED';
   verificationNotes?: string;
   sources?: string[];
+  // Phase 1+ — Modular agent evidence fields
+  evidence?: DiscoveryEvidence[];
+  socialDiscovery?: SocialProfileEvidence[];
+  // Phase 4
+  verification?: LeadVerification | null;
+  scoreBreakdown?: LeadScoreBreakdown | null;
+  // Phase 5
+  recommendations?: AgentRecommendation[];
+  // Phase 6
+  outreachDrafts?: OutreachDraft[];
+  lastAgentAction?: string;
 }
 
 export interface AgentAction {
@@ -178,4 +191,9 @@ export interface SearchSession {
   lastScoutTime?: number;
   // NEW: Store the structured memory map
   strategicContext?: StrategicContext;
+  // Phase 5+ — Agent pipeline fields
+  agentPlan?: AgentPlan | null;
+  memory?: CampaignMemory | null;
+  lastAgentRunAt?: number;
+  agentVersion?: string;
 }

@@ -2,7 +2,7 @@
 // Client-side wrapper for social discovery API endpoints.
 
 import type { SocialProfileEvidence } from '../../types/evidenceTypes';
-import type { StrategicContext } from '../../types';
+import type { StrategicContext, Lead } from '../../types';
 
 const postJson = async <T>(path: string, body: unknown): Promise<T> => {
   const response = await fetch(path, {
@@ -34,10 +34,10 @@ export const discoverLeadsFromSocial = async (
   productName: string,
   region: string,
   productContext?: StrategicContext
-): Promise<SocialProfileEvidence[]> => {
-  const { profiles } = await postJson<{ profiles: SocialProfileEvidence[] }>(
+): Promise<{ profiles: SocialProfileEvidence[]; leads: Lead[] }> => {
+  const result = await postJson<{ profiles: SocialProfileEvidence[]; leads: Lead[] }>(
     '/api/agent/social-discovery/region',
     { productName, region, productContext }
   );
-  return profiles;
+  return result;
 };

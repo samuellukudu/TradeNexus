@@ -25,6 +25,7 @@ const ai = await import("./geminiService");
 
 // Agent module imports (Phase 1+ — stubs throw until their phase is implemented)
 const agentSocialDiscovery = await import("./agent/discovery/socialDiscovery.js");
+const agentSocialToLead = await import("./agent/discovery/socialToLead.js");
 const agentVerification = await import("./agent/verification/leadVerification.js");
 const agentScoring = await import("./agent/scoring/leadScoring.js");
 
@@ -103,7 +104,8 @@ app.post("/api/agent/social-discovery/region", asyncRoute(async (req, res) => {
     region,
     productContext
   );
-  res.json({ profiles });
+  const leads = agentSocialToLead.socialProfilesToLeads(profiles, region || "Unknown");
+  res.json({ profiles, leads });
 }));
 
 // Phase 4: Structured lead verification

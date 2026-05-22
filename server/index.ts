@@ -28,6 +28,7 @@ const agentSocialDiscovery = await import("./agent/discovery/socialDiscovery.js"
 const agentSocialToLead = await import("./agent/discovery/socialToLead.js");
 const agentVerification = await import("./agent/verification/leadVerification.js");
 const agentScoring = await import("./agent/scoring/leadScoring.js");
+const agentNextBestAction = await import("./agent/planner/nextBestAction.js");
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
@@ -123,8 +124,10 @@ app.post("/api/agent/score-lead", asyncRoute(async (req, res) => {
 }));
 
 // Phase 5: Next best action recommendation
-app.post("/api/agent/next-best-action", asyncRoute(async (_req, res) => {
-  res.status(501).json({ error: "Next best action not yet implemented (Phase 5)" });
+app.post("/api/agent/next-best-action", asyncRoute(async (req, res) => {
+  const { lead } = req.body;
+  const recommendations = await agentNextBestAction.recommendNextActions(lead);
+  res.json({ recommendations });
 }));
 
 // Phase 6: Outreach draft generation

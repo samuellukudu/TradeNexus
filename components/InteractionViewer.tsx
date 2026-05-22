@@ -7,7 +7,9 @@ import { discoverSocialForCompany, discoverLeadsFromSocial } from '../services/a
 import type { SocialProfileEvidence } from '../types/evidenceTypes';
 import { verifyLead } from '../services/agent/verificationService';
 import { scoreLead } from '../services/agent/leadScoringService';
+import { getNextBestActions } from '../services/agent/nextBestActionService';
 import type { LeadVerification, LeadScoreBreakdown } from '../types/evidenceTypes';
+import type { AgentRecommendation } from '../types/agentTypes';
 
 interface InteractionViewerProps {
   lead: Lead;
@@ -26,6 +28,7 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
   const [socialDiscoveryError, setSocialDiscoveryError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
+  const [isGettingRecommendations, setIsGettingRecommendations] = useState(false);
 
   const handleStatusChange = (newStatus: LeadStatus) => {
       if (onUpdateLead) {
@@ -697,6 +700,62 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                             </div>
                           ) : (
                             <p className="text-[10px] text-slate-600">Not scored yet.</p>
+                          )}
+                        </div>
+
+                        {/* Agent Recommendations — Phase 5 */}
+                        <div className="mb-6">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-[10px] font-bold text-slate-600 uppercase">Recommendations</h4>
+                            <button
+                              onClick={async () => {
+                                if (!onUpdateLead || isGettingRecommendations) return;
+                                setIsGettingRecommendations(true);
+                                try {
+                                  const recommendations = await getNextBestActions(lead);
+                                  onUpdateLead({
+                                    ...lead,
+                                    recommendations,
+                                    lastAgentAction: 'recommendNextActions',
+                                  });
+                                } catch (e) {
+                                  console.error('Recommendations failed:', e);
+                                } finally {
+                                  setIsGettingRecommendations(false);
+                                }
+                              }}
+                              disabled={isGettingRecommendations}
+                              className="px-2 py-1 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-600/30 rounded text-[10px] text-cyan-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isGettingRecommendations ? 'Analyzing...' : 'Get Recommendations'}
+                            </button>
+                          </div>
+
+                          {lead.recommendations && lead.recommendations.length > 0 ? (
+                            <div className="space-y-2">
+                              {lead.recommendations.map((rec: AgentRecommendation, i: number) => (
+                                <div key={rec.id || i} className="p-3 bg-slate-800/60 rounded border border-slate-700/60">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs font-bold text-white">{rec.title}</span>
+                                    <div className="flex items-center gap-1">
+                                      <span className={`text-[9px] px-1.5 py-0.5 rounded border ${
+                                        rec.priority === 'HIGH' ? 'bg-red-900/30 text-red-400 border-red-800/50' :
+                                        rec.priority === 'MEDIUM' ? 'bg-yellow-900/30 text-yellow-400 border-yellow-800/50' :
+                                        'bg-slate-700/30 text-slate-400 border-slate-700/50'
+                                      }`}>
+                                        {rec.priority}
+                                      </span>
+                                      <span className="text-[9px] bg-slate-700/50 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700/50">
+                                        {rec.type.replace(/_/g, ' ')}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 leading-relaxed">{rec.reason}</p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-600">No recommendations yet.</p>
                           )}
                         </div>
                     </div>

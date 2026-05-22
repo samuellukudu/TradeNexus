@@ -29,6 +29,9 @@ const agentSocialToLead = await import("./agent/discovery/socialToLead.js");
 const agentVerification = await import("./agent/verification/leadVerification.js");
 const agentScoring = await import("./agent/scoring/leadScoring.js");
 const agentNextBestAction = await import("./agent/planner/nextBestAction.js");
+const agentOutreachStrategy = await import("./agent/outreach/closingStrategy.js");
+const agentOutreachDrafting = await import("./agent/outreach/messageDrafting.js");
+const agentOutreachFollowUp = await import("./agent/outreach/followUpPlanning.js");
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
@@ -130,9 +133,25 @@ app.post("/api/agent/next-best-action", asyncRoute(async (req, res) => {
   res.json({ recommendations });
 }));
 
-// Phase 6: Outreach draft generation
-app.post("/api/agent/outreach-draft", asyncRoute(async (_req, res) => {
-  res.status(501).json({ error: "Outreach drafting not yet implemented (Phase 6)" });
+// Phase 6: Closing strategy selection
+app.post("/api/agent/closing-strategy", asyncRoute(async (req, res) => {
+  const { lead, product } = req.body;
+  const strategy = await agentOutreachStrategy.generateClosingStrategy(lead, product);
+  res.json({ strategy });
+}));
+
+// Phase 6: Strategy-guided outreach draft generation
+app.post("/api/agent/outreach-draft", asyncRoute(async (req, res) => {
+  const { lead, type, strategy, context } = req.body;
+  const draft = await agentOutreachDrafting.generateOutreachDraft(lead, type, strategy, context);
+  res.json({ draft });
+}));
+
+// Phase 6: Follow-up sequence planning
+app.post("/api/agent/follow-up-sequence", asyncRoute(async (req, res) => {
+  const { lead, draftId, strategy } = req.body;
+  const sequence = await agentOutreachFollowUp.planFollowUpSequence(lead, draftId, strategy);
+  res.json({ sequence });
 }));
 
 if (isProduction) {

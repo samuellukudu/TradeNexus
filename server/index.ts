@@ -23,6 +23,11 @@ const asyncRoute = (
 
 const ai = await import("./geminiService");
 
+// Agent module imports (Phase 1+ — stubs throw until their phase is implemented)
+const agentSocialDiscovery = await import("./agent/discovery/socialDiscovery.js");
+const agentVerification = await import("./agent/verification/leadVerification.js");
+const agentScoring = await import("./agent/scoring/leadScoring.js");
+
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
@@ -74,6 +79,55 @@ app.post("/api/ai/search-leads", asyncRoute(async (req, res) => {
 app.post("/api/ai/verify-lead", asyncRoute(async (req, res) => {
   const result = await ai.verifyLead(req.body.lead, req.body.product);
   res.json({ result });
+}));
+
+// --- Agent Pipeline Routes (Phase 1+) ---
+
+// Phase 2: Social discovery for a known company
+app.post("/api/agent/social-discovery/company", asyncRoute(async (req, res) => {
+  const { companyName, region, website, productContext } = req.body;
+  const profiles = await agentSocialDiscovery.discoverSocialForCompany(
+    companyName,
+    region,
+    website,
+    productContext
+  );
+  res.json({ profiles });
+}));
+
+// Phase 3: Social-first lead discovery by region
+app.post("/api/agent/social-discovery/region", asyncRoute(async (req, res) => {
+  const { productName, region, productContext } = req.body;
+  const profiles = await agentSocialDiscovery.discoverLeadsFromSocial(
+    productName,
+    region,
+    productContext
+  );
+  res.json({ profiles });
+}));
+
+// Phase 4: Structured lead verification
+app.post("/api/agent/verify-lead", asyncRoute(async (req, res) => {
+  const { lead, product } = req.body;
+  const verification = await agentVerification.verifyLead(lead, product);
+  res.json({ verification });
+}));
+
+// Phase 4: Lead scoring with breakdown
+app.post("/api/agent/score-lead", asyncRoute(async (req, res) => {
+  const { lead, product } = req.body;
+  const score = await agentScoring.scoreLead(lead, product);
+  res.json({ score });
+}));
+
+// Phase 5: Next best action recommendation
+app.post("/api/agent/next-best-action", asyncRoute(async (_req, res) => {
+  res.status(501).json({ error: "Next best action not yet implemented (Phase 5)" });
+}));
+
+// Phase 6: Outreach draft generation
+app.post("/api/agent/outreach-draft", asyncRoute(async (_req, res) => {
+  res.status(501).json({ error: "Outreach drafting not yet implemented (Phase 6)" });
 }));
 
 if (isProduction) {

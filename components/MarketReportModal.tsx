@@ -77,22 +77,45 @@ const VerticalBarChart = ({
     );
 };
 
+const stringifyReportField = (value: unknown, fallback = 'N/A'): string => {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) {
+    return value.map((item) => stringifyReportField(item, '')).filter(Boolean).join('\n');
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => `${formatLabel(key)}: ${stringifyReportField(item, '')}`)
+      .filter((line) => !line.endsWith(': '))
+      .join('\n');
+  }
+  return fallback;
+};
+
+const formatLabel = (key: string) => {
+  return key
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, onClose, report, region }) => {
   const [isExporting, setIsExporting] = useState(false);
 
   if (!isOpen || !report) return null;
 
-  // Safe render for priceStructure — model may return string or object
-  const renderPriceStructure = () => {
-    const ps = report.priceStructure;
-    if (typeof ps === 'string') return ps;
-    if (ps && typeof ps === 'object') {
-      return Object.entries(ps as Record<string, unknown>)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join('\n');
-    }
-    return 'N/A';
-  };
+  const overviewText = stringifyReportField(report.overview, 'No information available.');
+  const regulationsText = stringifyReportField(report.regulations);
+  const localizationText = stringifyReportField(report.localization);
+  const entryStrategyText = stringifyReportField(report.entryStrategy);
+  const priceStructureText = stringifyReportField(report.priceStructure);
+  const hsCodeText = stringifyReportField(report.hsCode);
+  const importDutyText = stringifyReportField(report.importDuty);
+  const shippingTimeText = stringifyReportField(report.shippingTime);
+  const tradeShows = Array.isArray(report.tradeShows)
+    ? report.tradeShows.map((show) => stringifyReportField(show, '')).filter(Boolean)
+    : stringifyReportField(report.tradeShows, '').split('\n').filter(Boolean);
 
   // Helper to detect if growth stats are percentages or absolute values
   const getGrowthFormatter = () => {
@@ -174,15 +197,15 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
             <div className="grid grid-cols-3 gap-6 mb-10">
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded">
                     <div className="text-xs font-bold text-slate-500 uppercase mb-1">HS Code Strategy</div>
-                    <div className="text-xl font-mono font-bold text-slate-900 leading-tight">{report.hsCode || "N/A"}</div>
+                    <div className="text-xl font-mono font-bold text-slate-900 leading-tight">{hsCodeText}</div>
                 </div>
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded">
                     <div className="text-xs font-bold text-slate-500 uppercase mb-1">Import Duty</div>
-                    <div className="text-xl font-mono font-bold text-slate-900 leading-tight">{report.importDuty || "N/A"}</div>
+                    <div className="text-xl font-mono font-bold text-slate-900 leading-tight">{importDutyText}</div>
                 </div>
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded">
                     <div className="text-xs font-bold text-slate-500 uppercase mb-1">Shipping Time</div>
-                    <div className="text-xl font-mono font-bold text-slate-900 leading-tight">{report.shippingTime || "N/A"}</div>
+                    <div className="text-xl font-mono font-bold text-slate-900 leading-tight">{shippingTimeText}</div>
                 </div>
             </div>
 
@@ -192,7 +215,7 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
                 <div className="space-y-8">
                     <section>
                         <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">Market Overview</h3>
-                        <p className="text-sm leading-relaxed text-slate-800 text-justify">{report.overview}</p>
+                        <p className="text-sm leading-relaxed text-slate-800 text-justify whitespace-pre-line">{overviewText}</p>
                     </section>
                      {/* STATS: GROWTH */}
                     {report.stats?.growthTrend && report.stats.growthTrend.length > 0 && (
@@ -212,7 +235,7 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
                     <section>
                         <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">Price Structure</h3>
                         <div className="p-3 bg-slate-50 rounded border border-slate-200 text-sm font-mono text-slate-800 whitespace-pre-wrap">
-                            {renderPriceStructure()}
+                            {priceStructureText}
                         </div>
                     </section>
                 </div>
@@ -257,7 +280,7 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
 
                     <section>
                         <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">Compliance & Regulations</h3>
-                        <p className="text-sm leading-relaxed text-slate-800 text-justify">{report.regulations}</p>
+                        <p className="text-sm leading-relaxed text-slate-800 text-justify whitespace-pre-line">{regulationsText}</p>
                     </section>
                 </div>
             </div>
@@ -266,12 +289,12 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
             <div className="grid grid-cols-2 gap-10 mt-8">
                 <section>
                     <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">Localization Requirements</h3>
-                    <p className="text-sm leading-relaxed text-slate-800">{report.localization}</p>
+                    <p className="text-sm leading-relaxed text-slate-800 whitespace-pre-line">{localizationText}</p>
                 </section>
                 <section>
                     <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">Key Trade Events & Expos</h3>
                     <ul className="space-y-1">
-                        {report.tradeShows && report.tradeShows.length > 0 ? report.tradeShows.map((s,i) => (
+                        {tradeShows.length > 0 ? tradeShows.map((s,i) => (
                             <li key={i} className="text-sm text-slate-800 flex items-start gap-2">
                                 <span className="text-slate-400 mt-0.5">🗓</span> {s}
                             </li>
@@ -340,17 +363,17 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-lg">
                     <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">HS Code Strategy</h4>
-                    <div className="text-xl md:text-2xl font-mono text-white font-bold">{report.hsCode || "N/A"}</div>
+                    <div className="text-xl md:text-2xl font-mono text-white font-bold">{hsCodeText}</div>
                     <p className="text-xs text-slate-400 mt-1">Customs Classification Advice</p>
                 </div>
                 <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-lg">
                     <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Est. Import Duty</h4>
-                    <div className="text-xl md:text-2xl font-mono text-yellow-400 font-bold">{report.importDuty || "N/A"}</div>
+                    <div className="text-xl md:text-2xl font-mono text-yellow-400 font-bold">{importDutyText}</div>
                     <p className="text-xs text-slate-400 mt-1">Impact on Margins</p>
                 </div>
                 <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-lg">
                     <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Shipping Time</h4>
-                    <div className="text-xl md:text-2xl font-mono text-blue-400 font-bold">{report.shippingTime || "N/A"}</div>
+                    <div className="text-xl md:text-2xl font-mono text-blue-400 font-bold">{shippingTimeText}</div>
                     <p className="text-xs text-slate-400 mt-1">Estimated Sea Freight Duration</p>
                 </div>
             </div>
@@ -359,7 +382,7 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
               <div className="space-y-8">
                 <section>
                   <h3 className="text-primary-400 font-bold uppercase tracking-wider text-sm mb-3 border-b border-primary-900/50 pb-1">Market Overview</h3>
-                  <p className="text-slate-300 leading-relaxed text-sm">{report.overview}</p>
+                  <p className="text-slate-300 leading-relaxed text-sm whitespace-pre-line">{overviewText}</p>
                 </section>
                 
                 {/* CHART: Growth Trend */}
@@ -379,13 +402,13 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
                 <section>
                     <h3 className="text-green-400 font-bold uppercase tracking-wider text-sm mb-3 border-b border-green-900/50 pb-1">Price Structure Analysis</h3>
                     <div className="bg-slate-950 border border-slate-800 p-4 rounded font-mono text-xs md:text-sm text-green-300 shadow-inner overflow-x-auto whitespace-pre-wrap">
-                        {renderPriceStructure()}
+                        {priceStructureText}
                     </div>
                 </section>
                 <section>
                   <h3 className="text-indigo-400 font-bold uppercase tracking-wider text-sm mb-3 border-b border-indigo-900/50 pb-1">Product Localization</h3>
                   <div className="p-4 bg-indigo-900/10 border border-indigo-900/30 rounded-lg">
-                      <p className="text-indigo-200 leading-relaxed text-sm">{report.localization}</p>
+                      <p className="text-indigo-200 leading-relaxed text-sm whitespace-pre-line">{localizationText}</p>
                   </div>
                 </section>
               </div>
@@ -416,13 +439,13 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
                   <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
                      <div className="flex items-start gap-3">
                         <svg className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                        <p className="text-slate-300 text-sm leading-relaxed">{report.regulations}</p>
+                        <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">{regulationsText}</p>
                      </div>
                   </div>
                 </section>
                 <section>
                     <h3 className="text-slate-400 font-bold uppercase tracking-wider text-sm mb-3 border-b border-slate-700/50 pb-1">Entry Strategy</h3>
-                    <p className="text-slate-300 leading-relaxed text-sm italic">"{report.entryStrategy}"</p>
+                    <p className="text-slate-300 leading-relaxed text-sm italic whitespace-pre-line">"{entryStrategyText}"</p>
                 </section>
               </div>
             </div>

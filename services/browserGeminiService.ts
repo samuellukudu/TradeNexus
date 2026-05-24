@@ -83,6 +83,65 @@ const buildPartsWithAssets = (promptText: string, assets?: ProductAsset[]) => {
   return parts;
 };
 
+const stringifyReportField = (value: unknown, fallback = "N/A"): string => {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stringifyReportField(item, ""))
+      .filter(Boolean)
+      .join("\n");
+  }
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => `${formatLabel(key)}: ${stringifyReportField(item, "")}`)
+      .filter((line) => !line.endsWith(": "))
+      .join("\n");
+  }
+  return fallback;
+};
+
+const normalizeStringArray = (value: unknown): string[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((item) => stringifyReportField(item, "")).filter(Boolean);
+  }
+  return [stringifyReportField(value)].filter(Boolean);
+};
+
+const normalizeStats = (stats: any) => ({
+  competitorShare: normalizeStatPoints(stats?.competitorShare),
+  growthTrend: normalizeStatPoints(stats?.growthTrend),
+  userSegments: normalizeStatPoints(stats?.userSegments)
+});
+
+const normalizeStatPoints = (items: unknown): { label: string; value: number }[] => {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item: any) => ({
+      label: stringifyReportField(item?.label || item?.name || item?.year || "Item"),
+      value: normalizeStatValue(item?.value ?? item?.share ?? item?.size ?? item?.percentage)
+    }))
+    .filter((item) => Number.isFinite(item.value));
+};
+
+const normalizeStatValue = (value: unknown) => {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const match = value.replace(/,/g, "").match(/-?\d+(\.\d+)?/);
+    return match ? Number(match[0]) : NaN;
+  }
+  return NaN;
+};
+
+const formatLabel = (key: string) => {
+  return key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 export const generateProspectingMessage = async (
   history: ChatMessage[],
   lead: Lead,
@@ -246,23 +305,21 @@ export const generateMarketReport = async (product: ProductDetails, region: stri
     .filter((source: any, index: number, all: any[]) => index === all.findIndex((item) => item.url === source.url));
 
   return {
-    region: parsed.region || region,
-    overview: parsed.overview || "No information available.",
-    marketSize: parsed.marketSize || "N/A",
-    buyingHabits: parsed.buyingHabits || "N/A",
-    competitors: Array.isArray(parsed.competitors) ? parsed.competitors : [],
-    regulations: parsed.regulations || "N/A",
-    entryStrategy: parsed.entryStrategy || "N/A",
-    hsCode: parsed.hsCode || "N/A",
-    importDuty: parsed.importDuty || "N/A",
-    shippingTime: parsed.shippingTime || "N/A",
-    priceStructure: typeof parsed.priceStructure === "object"
-      ? Object.entries(parsed.priceStructure).map(([key, value]) => `${key}: ${value}`).join("\n")
-      : (parsed.priceStructure || "N/A"),
-    tradeShows: Array.isArray(parsed.tradeShows) ? parsed.tradeShows : [],
-    localization: parsed.localization || "N/A",
+    region: stringifyReportField(parsed.region, region),
+    overview: stringifyReportField(parsed.overview, "No information available."),
+    marketSize: stringifyReportField(parsed.marketSize),
+    buyingHabits: stringifyReportField(parsed.buyingHabits),
+    competitors: normalizeStringArray(parsed.competitors),
+    regulations: stringifyReportField(parsed.regulations),
+    entryStrategy: stringifyReportField(parsed.entryStrategy),
+    hsCode: stringifyReportField(parsed.hsCode),
+    importDuty: stringifyReportField(parsed.importDuty),
+    shippingTime: stringifyReportField(parsed.shippingTime),
+    priceStructure: stringifyReportField(parsed.priceStructure),
+    tradeShows: normalizeStringArray(parsed.tradeShows),
+    localization: stringifyReportField(parsed.localization),
     sources,
-    stats: parsed.stats || { competitorShare: [], growthTrend: [], userSegments: [] }
+    stats: normalizeStats(parsed.stats)
   };
 };
 

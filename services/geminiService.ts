@@ -7,6 +7,7 @@ import {
   StrategicContext,
   ChatMessage
 } from "../types";
+import * as browserGemini from "./browserGeminiService";
 
 const postJson = async <T>(path: string, body: unknown): Promise<T> => {
   const response = await fetch(path, {
@@ -16,6 +17,8 @@ const postJson = async <T>(path: string, body: unknown): Promise<T> => {
     },
     body: JSON.stringify(body)
   });
+
+  const contentType = response.headers.get("content-type") || "";
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
@@ -28,6 +31,12 @@ const postJson = async <T>(path: string, body: unknown): Promise<T> => {
     throw new Error(message);
   }
 
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      "AI backend is not reachable. The deployed host returned the frontend HTML for an API request."
+    );
+  }
+
   return response.json() as Promise<T>;
 };
 
@@ -36,6 +45,10 @@ export const generateProspectingMessage = async (
   lead: Lead,
   productContext?: StrategicContext
 ): Promise<string> => {
+  if (browserGemini.hasBrowserGeminiKey) {
+    return browserGemini.generateProspectingMessage(history, lead, productContext);
+  }
+
   const { text } = await postJson<{ text: string }>("/api/ai/prospecting-message", {
     history,
     lead,
@@ -47,6 +60,10 @@ export const generateProspectingMessage = async (
 export const extractSearchStrategyFromAssets = async (
   product: ProductDetails
 ): Promise<StrategicContext> => {
+  if (browserGemini.hasBrowserGeminiKey) {
+    return browserGemini.extractSearchStrategyFromAssets(product);
+  }
+
   const { context } = await postJson<{ context: StrategicContext }>("/api/ai/extract-search-strategy", {
     product
   });
@@ -62,6 +79,18 @@ export const analyzeMarkets = async (
   preComputedContext?: StrategicContext,
   supplierCountry?: string
 ): Promise<RegionSuggestion[]> => {
+  if (browserGemini.hasBrowserGeminiKey) {
+    return browserGemini.analyzeMarkets(
+      productName,
+      productDescription,
+      continent,
+      countries,
+      productAssets,
+      preComputedContext,
+      supplierCountry
+    );
+  }
+
   const { suggestions } = await postJson<{ suggestions: RegionSuggestion[] }>("/api/ai/analyze-markets", {
     productName,
     productDescription,
@@ -78,6 +107,10 @@ export const generateMarketReport = async (
   product: ProductDetails,
   region: string
 ): Promise<MarketReport> => {
+  if (browserGemini.hasBrowserGeminiKey) {
+    return browserGemini.generateMarketReport(product, region);
+  }
+
   const { report } = await postJson<{ report: MarketReport }>("/api/ai/market-report", {
     product,
     region
@@ -86,6 +119,10 @@ export const generateMarketReport = async (
 };
 
 export const searchForLeads = async (product: ProductDetails): Promise<Lead[]> => {
+  if (browserGemini.hasBrowserGeminiKey) {
+    return browserGemini.searchForLeads(product);
+  }
+
   const { leads } = await postJson<{ leads: Lead[] }>("/api/ai/search-leads", {
     product
   });
@@ -96,6 +133,10 @@ export const verifyLead = async (
   lead: Lead,
   product: ProductDetails
 ): Promise<Partial<Lead>> => {
+  if (browserGemini.hasBrowserGeminiKey) {
+    return browserGemini.verifyLead(lead, product);
+  }
+
   const { result } = await postJson<{ result: Partial<Lead> }>("/api/ai/verify-lead", {
     lead,
     product

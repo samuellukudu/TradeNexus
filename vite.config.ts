@@ -14,6 +14,16 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      build: {
+        chunkSizeWarningLimit: 1200,
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'firebase': ['firebase/firestore', 'firebase/auth', 'firebase/app'],
+            },
+          },
+        },
+      },
     };
 });

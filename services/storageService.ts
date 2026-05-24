@@ -33,13 +33,13 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     const errInfo: FirestoreErrorInfo = {
       error: error instanceof Error ? error.message : String(error),
       authInfo: {
-        userId: undefined, // Add auth checking here if needed, or omit for now
+        userId: undefined,
       },
       operationType,
       path
     }
     console.error('Firestore Error: ', JSON.stringify(errInfo));
-    throw new Error(JSON.stringify(errInfo));
+    // Don't re-throw — callers already handle the error path after catch
 }
 
 export const getSessions = async (userId: string): Promise<SearchSession[]> => {

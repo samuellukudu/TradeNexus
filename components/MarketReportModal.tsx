@@ -82,6 +82,18 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
 
   if (!isOpen || !report) return null;
 
+  // Safe render for priceStructure — model may return string or object
+  const renderPriceStructure = () => {
+    const ps = report.priceStructure;
+    if (typeof ps === 'string') return ps;
+    if (ps && typeof ps === 'object') {
+      return Object.entries(ps as Record<string, unknown>)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join('\n');
+    }
+    return 'N/A';
+  };
+
   // Helper to detect if growth stats are percentages or absolute values
   const getGrowthFormatter = () => {
       const values = report.stats?.growthTrend?.map(d => d.value) || [];
@@ -199,8 +211,8 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
                     )}
                     <section>
                         <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">Price Structure</h3>
-                        <div className="p-3 bg-slate-50 rounded border border-slate-200 text-sm font-mono text-slate-800">
-                            {report.priceStructure}
+                        <div className="p-3 bg-slate-50 rounded border border-slate-200 text-sm font-mono text-slate-800 whitespace-pre-wrap">
+                            {renderPriceStructure()}
                         </div>
                     </section>
                 </div>
@@ -366,8 +378,8 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
 
                 <section>
                     <h3 className="text-green-400 font-bold uppercase tracking-wider text-sm mb-3 border-b border-green-900/50 pb-1">Price Structure Analysis</h3>
-                    <div className="bg-slate-950 border border-slate-800 p-4 rounded font-mono text-xs md:text-sm text-green-300 shadow-inner overflow-x-auto">
-                        {report.priceStructure}
+                    <div className="bg-slate-950 border border-slate-800 p-4 rounded font-mono text-xs md:text-sm text-green-300 shadow-inner overflow-x-auto whitespace-pre-wrap">
+                        {renderPriceStructure()}
                     </div>
                 </section>
                 <section>

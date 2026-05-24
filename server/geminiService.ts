@@ -444,7 +444,9 @@ export const generateMarketReport = async (product: ProductDetails, region: stri
         hsCode: parsed.hsCode || "N/A",
         importDuty: parsed.importDuty || "N/A",
         shippingTime: parsed.shippingTime || "N/A",
-        priceStructure: parsed.priceStructure || "N/A",
+        priceStructure: typeof parsed.priceStructure === 'object'
+          ? Object.entries(parsed.priceStructure).map(([k, v]) => `${k}: ${v}`).join('\n')
+          : (parsed.priceStructure || "N/A"),
         tradeShows: Array.isArray(parsed.tradeShows) ? parsed.tradeShows : [],
         localization: parsed.localization || "N/A",
         sources: uniqueSources,

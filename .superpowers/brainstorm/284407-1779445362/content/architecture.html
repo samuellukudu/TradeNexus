@@ -1,0 +1,89 @@
+<h2>Modular Agent Architecture</h2>
+<p class="subtitle">Data flow from discovery to lead output</p>
+
+<div class="section">
+  <h3>Pipeline Overview</h3>
+  <div class="mockup">
+    <div class="mockup-header">Agent Pipeline: Plan → Discover → Enrich → Verify → Score → Recommend</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 2;">
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px;">
+        <span style="background:#1e293b;color:#38bdf8;padding:4px 10px;border-radius:6px;font-weight:bold;">PLANNER</span>
+        <span style="color:#64748b;">→</span>
+        <span style="background:#1e293b;color:#34d399;padding:4px 10px;border-radius:6px;font-weight:bold;">WEB DISCOVERY</span>
+        <span style="background:#1e293b;color:#34d399;padding:4px 10px;border-radius:6px;font-weight:bold;">MAPS DISCOVERY</span>
+        <span style="background:#1e293b;color:#f59e0b;padding:4px 10px;border-radius:6px;font-weight:bold;">SOCIAL DISCOVERY</span>
+        <span style="color:#64748b;">→</span>
+        <span style="background:#1e293b;color:#a78bfa;padding:4px 10px;border-radius:6px;font-weight:bold;">ENRICHMENT</span>
+        <span style="color:#64748b;">→</span>
+        <span style="background:#1e293b;color:#f472b6;padding:4px 10px;border-radius:6px;font-weight:bold;">VERIFICATION</span>
+        <span style="color:#64748b;">→</span>
+        <span style="background:#1e293b;color:#fb923c;padding:4px 10px;border-radius:6px;font-weight:bold;">SCORING</span>
+        <span style="color:#64748b;">→</span>
+        <span style="background:#1e293b;color:#e2e8f0;padding:4px 10px;border-radius:6px;font-weight:bold;">LEAD + EVIDENCE</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Lead = Aggregation of Evidence</h3>
+  <div class="cards">
+    <div class="card">
+      <div class="card-body">
+        <h3>Discovery Evidence</h3>
+        <p>sourceType, url, title, extracted fields, confidence, foundBy module, validation status</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <h3>Social Profile Evidence</h3>
+        <p>platform, handle, official-likelihood, profile type, activity level, contact hints</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <h3>Verification Checks</h3>
+        <p>LOCATION, WEBSITE, PRODUCT_FIT, SOCIAL_OWNERSHIP, CONTACT, DUPLICATE, COUNTRY_EXCLUSION</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <h3>Score Breakdown</h3>
+        <p>location, product, buyer type, company size, evidence quality, social activity, contactability + more</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Phase 1-2 Focus: Evidence Model + Social Discovery</h3>
+  <div style="display:flex; gap:12px; flex-wrap:wrap;">
+    <div style="flex:1;min-width:200px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;">
+      <div class="label" style="color:#34d399;">NEW TYPES</div>
+      <ul style="color:#94a3b8;font-size:13px;margin-top:8px;">
+        <li>EvidenceSourceType</li>
+        <li>DiscoveryEvidence</li>
+        <li>SocialProfileEvidence</li>
+        <li>SocialActivityLevel</li>
+      </ul>
+    </div>
+    <div style="flex:1;min-width:200px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;">
+      <div class="label" style="color:#f59e0b;">NEW MODULE</div>
+      <ul style="color:#94a3b8;font-size:13px;margin-top:8px;">
+        <li>socialDiscovery.ts</li>
+        <li>Company social lookup</li>
+        <li>Social-first lead discovery</li>
+        <li>Profile classification</li>
+      </ul>
+    </div>
+    <div style="flex:1;min-width:200px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;">
+      <div class="label" style="color:#38bdf8;">NEW ENDPOINTS</div>
+      <ul style="color:#94a3b8;font-size:13px;margin-top:8px;">
+        <li>/api/agent/social-discovery/company</li>
+        <li>/api/agent/social-discovery/region</li>
+        <li>/api/agent/verify-lead</li>
+        <li>/api/agent/score-lead</li>
+      </ul>
+    </div>
+  </div>
+</div>

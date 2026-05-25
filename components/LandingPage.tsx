@@ -180,7 +180,13 @@ export function LandingPage({
 
       {/* Footer */}
       <footer className="py-8 text-center text-slate-500 text-sm border-t border-slate-900 bg-slate-950">
-        <p>&copy; {new Date().getFullYear()} TradeNexus AI. All rights reserved.</p>
+        <div className="flex items-center justify-center gap-4 flex-wrap">
+          <a href="/privacy" className="hover:text-slate-300 transition-colors underline underline-offset-2">Privacy Policy</a>
+          <span className="text-slate-700">|</span>
+          <a href="/terms" className="hover:text-slate-300 transition-colors underline underline-offset-2">Terms of Service</a>
+          <span className="text-slate-700">|</span>
+          <p>&copy; {new Date().getFullYear()} TradeNexus AI. All rights reserved.</p>
+        </div>
       </footer>
 
       {/* Authentication Modal */}

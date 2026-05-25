@@ -12,6 +12,8 @@ import { SupplierProfileView } from './components/SupplierProfileView';
 import { v4 as uuidv4 } from 'uuid';
 import { auth, loginWithGoogle, logout, loginWithEmail, registerWithEmail } from './services/firebase';
 import { LandingPage } from './components/LandingPage';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { TermsOfService } from './components/TermsOfService';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { Home, Plus, UserRound } from 'lucide-react';
 
@@ -743,6 +745,17 @@ export default function App() {
   };
 
   const selectedLead = leads.find(l => l.id === selectedLeadId);
+
+  const isPrivacyPage = window.location.pathname === '/privacy';
+  const isTermsPage = window.location.pathname === '/terms';
+
+  if (isPrivacyPage) {
+    return <PrivacyPolicy />;
+  }
+
+  if (isTermsPage) {
+    return <TermsOfService />;
+  }
 
   if (authLoading) {
     return (

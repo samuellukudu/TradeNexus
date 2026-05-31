@@ -15,7 +15,7 @@ import { LandingPage } from './components/LandingPage';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { Home, Plus, UserRound } from 'lucide-react';
+import { Home, LogOut, Plus, UserRound } from 'lucide-react';
 
 const INITIAL_LOGS = [
   "TradeNexus AI Agent System v1.0.0 initialized...",
@@ -805,14 +805,14 @@ export default function App() {
       )}
 
       {/* PRIMARY NAV RAIL */}
-      <nav className="hidden md:flex w-[88px] shrink-0 bg-slate-950 border-r border-slate-800 flex-col items-center py-10 gap-10">
+      <nav className={`${isSidebarOpen ? 'flex' : 'hidden'} md:flex fixed inset-y-0 left-0 z-50 md:relative md:z-auto w-16 shrink-0 bg-slate-950 border-r border-slate-800 flex-col items-center py-8 gap-8`}>
         <button
           onClick={() => {
             setView('OPERATIONS');
             setSelectedLeadId(null);
             setIsSidebarOpen(true);
           }}
-          className="w-10 h-10 rounded-full bg-primary-500/90 shadow-lg shadow-primary-500/20"
+          className="w-9 h-9 rounded-full bg-primary-500/90 shadow-lg shadow-primary-500/20"
           aria-label="TradeNexus home"
           title="TradeNexus"
         />
@@ -824,7 +824,7 @@ export default function App() {
               setSelectedLeadId(null);
               setIsSidebarOpen(true);
             }}
-            className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${
+            className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
               view === 'OPERATIONS' || view === 'DASHBOARD'
                 ? 'bg-slate-800 text-slate-200'
                 : 'text-slate-500 hover:text-slate-200 hover:bg-slate-900'
@@ -832,7 +832,7 @@ export default function App() {
             aria-label="Operations"
             title="Operations"
           >
-            <Home className="w-7 h-7" strokeWidth={2.2} />
+            <Home className="w-6 h-6" strokeWidth={2.2} />
           </button>
           <button
             onClick={() => {
@@ -841,7 +841,7 @@ export default function App() {
               setIsSidebarOpen(false);
               setIsLeadsPanelOpen(false);
             }}
-            className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${
+            className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
               view === 'PROFILE'
                 ? 'bg-slate-800 text-slate-200'
                 : 'text-slate-500 hover:text-slate-200 hover:bg-slate-900'
@@ -849,23 +849,32 @@ export default function App() {
             aria-label="Supplier profile"
             title="Supplier profile"
           >
-            <UserRound className="w-7 h-7" strokeWidth={2.2} />
+            <UserRound className="w-6 h-6" strokeWidth={2.2} />
           </button>
           <button
             onClick={startNewCampaign}
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-slate-900 transition-colors"
+            className="w-12 h-12 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-slate-900 transition-colors"
             aria-label="Start new campaign"
             title="Start new campaign"
           >
-            <Plus className="w-7 h-7" strokeWidth={2.2} />
+            <Plus className="w-6 h-6" strokeWidth={2.2} />
           </button>
         </div>
+
+        <button
+          onClick={logout}
+          className="mt-auto w-12 h-12 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-slate-900 transition-colors"
+          aria-label="Logout"
+          title="Logout"
+        >
+          <LogOut className="w-6 h-6" strokeWidth={2.2} />
+        </button>
       </nav>
 
       {/* COLUMN 1: STRATEGY & CONFIGURATION */}
       {view !== 'PROFILE' && (
       <div 
-        className={`fixed inset-y-0 left-0 z-50 h-full bg-slate-900 flex flex-col transition-all duration-300 shadow-2xl border-r border-slate-800 md:relative md:z-30 ${isSidebarOpen ? 'translate-x-0 w-[85vw] sm:w-80' : '-translate-x-full w-0 md:translate-x-0 md:w-12'}`}
+        className={`fixed inset-y-0 left-16 z-50 h-full bg-slate-900 flex flex-col transition-all duration-300 shadow-2xl md:left-auto md:relative md:z-30 ${isSidebarOpen ? 'translate-x-0 w-[calc(100vw-4rem)] sm:w-[36rem] md:w-80 border-r border-slate-800' : '-translate-x-full w-0 border-r-0 md:translate-x-0 md:w-12 md:border-r md:border-slate-800'}`}
       >
         {/* Toggle Button (Desktop Only or Inside Drawer on Mobile) */}
         <button 
@@ -889,7 +898,6 @@ export default function App() {
                     <p className="text-xs text-slate-500 mt-1">Autonomous B2B Sales System</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button onClick={logout} className="text-xs text-slate-400 hover:text-white underline hidden md:block">Logout</button>
                     {/* Mobile Close Button */}
                     <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white">
                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -910,12 +918,6 @@ export default function App() {
                         className={`flex-1 py-3 text-xs font-medium tracking-wide transition-colors ${view === 'DASHBOARD' ? 'bg-slate-800 text-white border-b-2 border-primary-500' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                         DASHBOARD
-                    </button>
-                    <button 
-                        onClick={() => { setView('PROFILE'); setSelectedLeadId(null); setIsSidebarOpen(false); setIsLeadsPanelOpen(false); }}
-                        className={`flex-1 py-3 text-xs font-medium tracking-wide transition-colors md:hidden ${view === 'PROFILE' ? 'bg-slate-800 text-white border-b-2 border-primary-500' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        PROFILE
                     </button>
                 </div>
 
@@ -1106,7 +1108,7 @@ export default function App() {
       {/* COLUMN 2: ACTIVE LEADS */}
       {view === 'OPERATIONS' && (
         <div 
-            className={`fixed inset-y-0 left-0 z-40 h-full bg-slate-900/95 backdrop-blur-md flex flex-col transition-all duration-300 border-r border-slate-800 md:relative md:z-20 md:bg-slate-900/50 ${isLeadsPanelOpen ? 'translate-x-0 w-[85vw] sm:w-80' : '-translate-x-full w-0 md:translate-x-0 md:w-12'}`}
+            className={`fixed inset-y-0 left-0 z-40 h-full bg-slate-900/95 backdrop-blur-md flex flex-col transition-all duration-300 md:relative md:z-20 md:bg-slate-900/50 ${isLeadsPanelOpen ? 'translate-x-0 w-[85vw] sm:w-80 border-r border-slate-800' : '-translate-x-full w-0 border-r-0 md:translate-x-0 md:w-12 md:border-r md:border-slate-800'}`}
         >
             {/* Toggle Button */}
             <button 

@@ -628,6 +628,20 @@ export const allocateLeadBudget = (
     fracs.push({ id: app.id, frac: raw - alloc });
   }
 
+  // If minPerLane pushed us over budget, trim from lowest-priority apps
+  if (remaining < 0) {
+    let overflow = -remaining;
+    // Walk applications in reverse (lowest priority first)
+    for (let i = applications.length - 1; i >= 0 && overflow > 0; i--) {
+      const id = applications[i].id;
+      if (budget[id] > 1) {
+        budget[id]--;
+        overflow--;
+      }
+    }
+    remaining = 0;
+  }
+
   fracs.sort((a, b) => b.frac - a.frac);
   for (const { id } of fracs) {
     if (remaining <= 0) break;

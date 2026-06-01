@@ -2,6 +2,7 @@
 // Shared agent pipeline types for planning, recommendations, memory, and outreach.
 
 import { DiscoveryEvidence, SocialProfileEvidence } from './evidenceTypes';
+import { CountryApplicationMap } from './applicationTypes';
 
 // --- Agent Plan ---
 
@@ -105,5 +106,6 @@ export interface CampaignMemory {
   weakRegions: string[];
   platformUsefulness: Record<string, number>;
   buyerTypePerformance: Record<string, number>;
+  applicationMapHistory?: CountryApplicationMap[];
   updatedAt: number;
 }

@@ -543,6 +543,8 @@ export const generateApplicationMap = async (
           - ease of finding these companies online
           - fit with supplier capability
 
+          Generate at least 3 distinct applications, and at most 10. Focus on the most relevant ones. If you cannot find enough evidence for at least 3 applications, include lower-confidence ones with appropriate confidence scores.
+
           Return only a valid JSON object with this exact shape:
           {
             "applications": [
@@ -572,9 +574,11 @@ export const generateApplicationMap = async (
 
   const parsed = extractJsonFromText(response.text) || {};
   const rawApps = Array.isArray(parsed.applications) ? parsed.applications : [];
-  const evidence = (response.candidates?.[0]?.groundingMetadata?.groundingChunks || [])
-    .map((chunk: any) => chunk.web?.uri)
-    .filter(Boolean);
+  const evidence = [...new Set(
+    (response.candidates?.[0]?.groundingMetadata?.groundingChunks || [])
+      .map((chunk: any) => chunk.web?.uri)
+      .filter(Boolean)
+  )];
 
   const applications: ProductApplication[] = rawApps
     .map((app: any) => ({
@@ -596,7 +600,7 @@ export const generateApplicationMap = async (
     .sort((a, b) => b.priorityScore - a.priorityScore);
 
   return {
-    productName: product.name,
+    productName: product.name || product.description || "Unspecified Product",
     country,
     productRole,
     applications,

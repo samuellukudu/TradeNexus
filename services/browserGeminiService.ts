@@ -455,7 +455,19 @@ export const classifyProductRole = async (
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          role: { type: Type.STRING },
+          role: {
+            type: Type.STRING,
+            enum: [
+              "finished system",
+              "machine or equipment",
+              "component",
+              "consumable",
+              "raw material",
+              "spare part",
+              "installation or service",
+              "software-enabled system"
+            ]
+          },
           resellerTypes: { type: Type.ARRAY, items: { type: Type.STRING } },
           installerTypes: { type: Type.ARRAY, items: { type: Type.STRING } },
           operatorTypes: { type: Type.ARRAY, items: { type: Type.STRING } },

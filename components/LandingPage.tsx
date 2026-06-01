@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Globe2, Crosshair, Zap, Database, ArrowRight, X, Briefcase, Activity, ShieldCheck } from 'lucide-react';
+import { ArrowRight, X, Play } from 'lucide-react';
+import { useCases, howItWorksSteps } from './landingData';
 
 interface LandingPageProps {
   handleEmailAuth: (e: React.FormEvent) => Promise<void>;
@@ -28,36 +29,55 @@ export function LandingPage({
   isSubmitting,
 }: LandingPageProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [expandedRegion, setExpandedRegion] = useState<string | null>(null);
 
   const openAuthModal = (isLogin: boolean) => {
     setIsLoginMode(isLogin);
     setIsAuthModalOpen(true);
   };
 
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-primary-500 selection:text-white overflow-y-auto">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white">
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <button 
+          <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
           >
-            <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center shadow-inner border border-slate-700">
-              <span className="w-2.5 h-2.5 bg-primary-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(var(--color-primary-500),_0.5)]"></span>
+            <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700">
+              <span className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"></span>
             </div>
-            <span className="text-xl font-bold tracking-tight text-white">TradeNexus <span className="text-primary-500">AI</span></span>
+            <span className="text-lg font-bold tracking-tight text-white">
+              TradeNexus <span className="text-blue-500">AI</span>
+            </span>
           </button>
-          <div className="flex items-center gap-4">
-            <button 
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => scrollTo('how-it-works')}
+              className="text-sm font-medium text-slate-400 hover:text-white transition-colors hidden sm:block"
+            >
+              How It Works
+            </button>
+            <button
+              onClick={() => scrollTo('use-cases')}
+              className="text-sm font-medium text-slate-400 hover:text-white transition-colors hidden sm:block"
+            >
+              Use Cases
+            </button>
+            <button
               onClick={() => openAuthModal(true)}
               className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
             >
               Sign In
             </button>
-            <button 
+            <button
               onClick={() => openAuthModal(false)}
-              className="text-sm font-bold bg-primary-600 hover:bg-primary-500 text-white px-5 py-2 rounded-lg transition-all shadow-lg hover:shadow-primary-500/20"
+              className="text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg transition-all"
             >
               Get Started
             </button>
@@ -66,126 +86,300 @@ export function LandingPage({
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6 overflow-hidden">
-        {/* Background Gradients */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary-900/20 rounded-full blur-[120px] opacity-50 pointer-events-none"></div>
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-900/20 rounded-full blur-[100px] opacity-40 pointer-events-none"></div>
+      <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 px-6 overflow-hidden">
+        <div className="absolute top-1/3 right-0 w-[600px] h-[600px] bg-blue-900/10 rounded-full blur-[120px] opacity-40 pointer-events-none"></div>
 
-        <div className="max-w-7xl mx-auto text-center relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-500/10 text-primary-400 text-sm font-medium mb-6 border border-primary-500/20">
-              <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse"></span>
-              Autonomous B2B Sales Agents
-            </span>
-            <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight leading-tight mb-8">
-              The AI Engine for <br className="hidden md:block" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-indigo-400">
-                Global Suppliers
-              </span>
-            </h1>
-            <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto mb-10 leading-relaxed">
-              Stop manually searching for buyers. TradeNexus AI autonomously scouts global markets, qualifies B2B leads, and builds your pipeline while you sleep.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button 
-                onClick={() => openAuthModal(false)}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-bold py-4 px-8 rounded-xl transition-all shadow-xl hover:shadow-primary-500/20 hover:-translate-y-1"
-              >
-                Start Autonomous Scouting
-                <ArrowRight className="w-5 h-5" />
-              </button>
-              <button 
-                onClick={() => document.getElementById('benefits')?.scrollIntoView({ behavior: 'smooth' })}
-                className="w-full sm:w-auto bg-slate-800/50 hover:bg-slate-800 text-white font-medium py-4 px-8 rounded-xl border border-slate-700 transition-all hover:-translate-y-1"
-              >
-                See How It Works
-              </button>
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
+            {/* Left: Text */}
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs font-semibold mb-6 border border-blue-500/20 tracking-wide">
+                AUTONOMOUS B2B SALES AGENTS
+              </div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.06] mb-6">
+                AI Agents That Find Your Next Buyer. 24/7.
+              </h1>
+              <p className="text-base md:text-lg text-slate-400 max-w-lg mb-8 leading-relaxed">
+                TradeNexus AI autonomously scouts 190+ countries, verifies companies with real data, and fills your pipeline while you sleep.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => openAuthModal(false)}
+                  className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-8 rounded-xl transition-all hover:-translate-y-0.5"
+                >
+                  Start Scouting Free
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => scrollTo('demo')}
+                  className="inline-flex items-center justify-center gap-2 bg-slate-800/70 hover:bg-slate-800 text-white font-medium py-3.5 px-8 rounded-xl border border-slate-700 transition-all hover:-translate-y-0.5"
+                >
+                  <Play className="w-4 h-4" />
+                  Watch Demo
+                </button>
+              </div>
             </div>
-          </motion.div>
+
+            {/* Right: Live Lead Preview */}
+            <div className="relative">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Live Lead Feed</span>
+                  </div>
+                  <span className="text-[10px] text-slate-600 bg-slate-800 px-2 py-0.5 rounded">Auto-updating</span>
+                </div>
+                <div className="space-y-3">
+                  {[
+                    { icon: "🏗️", name: "Sydney Machinery Hire", cat: "Mini Excavators", score: "95%", detail: "Dry hire fleet, Sydney NSW" },
+                    { icon: "☀️", name: "Desert Technologies", cat: "Solar Panels", score: "85%", detail: "PV manufacturer, Jeddah" },
+                    { icon: "❄️", name: "Kooline Air Conditioning", cat: "HVAC Systems", score: "85%", detail: "Est. 1975, Suva Fiji" },
+                  ].map((lead, i) => (
+                    <div key={i} className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3.5 flex items-center gap-3.5 hover:border-slate-600/50 transition-colors">
+                      <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-lg shrink-0">
+                        {lead.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-white truncate">{lead.name}</div>
+                        <div className="text-xs text-slate-400">{lead.cat} · {lead.detail}</div>
+                      </div>
+                      <div className="text-xs font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md shrink-0">
+                        {lead.score}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
+                  <span>Scouting 190+ countries</span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                    Autonomous mode active
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Benefits Section */}
-      <section id="benefits" className="py-24 bg-slate-900 border-y border-slate-800">
-        <div className="max-w-7xl mx-auto px-6">
+      {/* How It Works */}
+      <section id="how-it-works" className="py-24 md:py-32 px-6 bg-slate-900 border-y border-slate-800">
+        <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Unfair Advantage for Exporters & OEMs</h2>
-            <p className="text-slate-400 max-w-2xl mx-auto">Equip your sales team with an autonomous intelligence layer that identifies demand before your competitors do.</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
+              How It Works
+            </h2>
+            <p className="text-slate-400 max-w-lg mx-auto text-base">
+              Three steps from product to pipeline. No manual research required.
+            </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: <Globe2 className="w-6 h-6 text-blue-400" />,
-                title: "Global Market Discovery",
-                description: "Upload your product catalog, and our AI instantly identifies high-potential global markets based on live trade data and economic indicators."
-              },
-              {
-                icon: <Crosshair className="w-6 h-6 text-rose-400" />,
-                title: "Targeted B2B Scouting",
-                description: "Deploy localized AI agent squads to actively hunt for distributors, wholesalers, and specific business types matching your ICP."
-              },
-              {
-                icon: <Database className="w-6 h-6 text-emerald-400" />,
-                title: "Verified Lead Encrichment",
-                description: "Say goodbye to empty spreadsheets. Every lead includes verified company descriptions, contact avenues, and intent signals."
-              },
-              {
-                icon: <Zap className="w-6 h-6 text-amber-400" />,
-                title: "Auto-Pilot Lead Generation",
-                description: "Set your target region and let the engine run continuously, automatically expanding your pipeline with net-new prospects every day."
-              },
-              {
-                icon: <ShieldCheck className="w-6 h-6 text-indigo-400" />,
-                title: "Intelligent Deduplication",
-                description: "Never contact the same company twice. Built-in deduplication ensures you only see net-new opportunities."
-              },
-              {
-                icon: <Briefcase className="w-6 h-6 text-primary-400" />,
-                title: "Centralized Deal Command",
-                description: "Manage territories, track outreach status, and visualize your entire global sales offensive from one dashboard."
-              }
-            ].map((benefit, i) => (
-              <div key={i} className="bg-slate-950 border border-slate-800 p-8 rounded-2xl hover:border-slate-700 transition-colors">
-                <div className="w-12 h-12 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center mb-6">
-                  {benefit.icon}
+            {howItWorksSteps.map((step, i) => (
+              <div key={i} className="text-center group">
+                <div className="w-14 h-14 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-xl font-bold text-blue-400 group-hover:bg-blue-500/20 transition-colors">
+                  {step.number}
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">{benefit.title}</h3>
-                <p className="text-slate-400 leading-relaxed text-sm">{benefit.description}</p>
+                <h3 className="text-lg font-bold text-white mb-3">{step.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed max-w-xs mx-auto">{step.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-32 px-6 relative overflow-hidden text-center">
-        <div className="absolute inset-0 bg-primary-900/10"></div>
-        <div className="max-w-4xl mx-auto relative z-10">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Ready to scale your global reach?</h2>
-          <p className="text-xl text-slate-400 mb-10">Join forward-thinking suppliers using TradeNexus AI to dominate international markets.</p>
-          <button 
-            onClick={() => openAuthModal(false)}
-            className="bg-white text-slate-900 hover:bg-slate-100 font-bold py-4 px-10 rounded-xl transition-all shadow-xl hover:-translate-y-1 text-lg"
-          >
-            Create Your Account
-          </button>
+      {/* Interactive Globe / Use Cases */}
+      <section id="use-cases" className="py-24 md:py-32 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
+              Global Coverage, One Platform
+            </h2>
+            <p className="text-slate-400 max-w-lg mx-auto text-base">
+              AI agents discover verified buyers across every continent. Click a region to see what they find.
+            </p>
+          </div>
+
+          {/* Region Tag Cloud */}
+          <div className="flex flex-wrap gap-3 justify-center max-w-3xl mx-auto mb-12">
+            {useCases.map((uc) => (
+              <button
+                key={uc.country}
+                onClick={() => setExpandedRegion(expandedRegion === uc.country ? null : uc.country)}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
+                  expandedRegion === uc.country
+                    ? 'bg-blue-600/20 border-blue-500/50 text-white'
+                    : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
+                }`}
+              >
+                <span>{uc.flag}</span>
+                <span>{uc.country}</span>
+                <span className="text-slate-500">·</span>
+                <span className="text-slate-400 text-xs">{uc.product}</span>
+                {uc.isRealData && (
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" title="Real search data"></span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Expanded Region Detail */}
+          {expandedRegion && (() => {
+            const uc = useCases.find(u => u.country === expandedRegion);
+            if (!uc) return null;
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="max-w-2xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-8"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-2xl">{uc.flag}</span>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{uc.country} · {uc.product}</h3>
+                    <p className="text-sm text-slate-400">{uc.region}</p>
+                  </div>
+                  {uc.isRealData && (
+                    <span className="ml-auto text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full">
+                      Verified Search Data
+                    </span>
+                  )}
+                </div>
+                <p className="text-slate-300 mb-6 leading-relaxed">{uc.context}</p>
+                <div className="space-y-3">
+                  {uc.leads.map((lead, i) => (
+                    <div key={i} className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 flex items-center gap-4">
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold text-white">{lead.companyName}</div>
+                        <div className="text-xs text-slate-400 mt-0.5">{lead.detail}</div>
+                      </div>
+                      <div className="text-xs font-bold text-blue-400 bg-blue-400/10 px-2.5 py-1 rounded-md shrink-0">
+                        {lead.matchScore}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            );
+          })()}
+
+          {!expandedRegion && (
+            <p className="text-center text-xs text-slate-600">
+              Click any region tag to expand with real lead data
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Demo Video */}
+      <section id="demo" className="py-24 md:py-32 px-6 bg-slate-900 border-y border-slate-800">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
+            See TradeNexus in Action
+          </h2>
+          <p className="text-slate-400 max-w-lg mx-auto text-base mb-12">
+            Watch AI agents discover and verify B2B leads in real time.
+          </p>
+
+          <div className="relative bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+            <video
+              src="/demo.mp4"
+              className="w-full aspect-[9/16] md:aspect-video object-cover"
+              controls
+              preload="metadata"
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+
+          <p className="text-xs text-slate-600 mt-4">
+            TradeNexus AI autonomously scouting and verifying leads across global markets
+          </p>
+        </div>
+      </section>
+
+      {/* Real Results */}
+      <section className="py-24 md:py-32 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
+              Real Results From Real Searches
+            </h2>
+            <p className="text-slate-400 max-w-lg mx-auto text-base">
+              Every lead shown was discovered by TradeNexus AI. Verified companies, real contact data.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {useCases.filter(uc => uc.isRealData).map((uc) => (
+              <div key={uc.country} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition-colors">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-2xl">{uc.flag}</span>
+                  <div>
+                    <h3 className="font-bold text-white">{uc.country}</h3>
+                    <p className="text-xs text-slate-500">{uc.product}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-400 mb-5 leading-relaxed">{uc.context}</p>
+                <div className="space-y-2.5">
+                  {uc.leads.map((lead, i) => (
+                    <div key={i} className="bg-slate-800/50 border border-slate-700/30 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-white truncate">{lead.companyName}</div>
+                        <div className="text-xs text-slate-500 truncate">{lead.detail}</div>
+                      </div>
+                      <span className="text-xs font-bold text-blue-400 bg-blue-400/10 px-2 py-1 rounded shrink-0">
+                        {lead.matchScore}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-24 md:py-32 px-6">
+        <div className="max-w-3xl mx-auto">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600/10 via-blue-900/5 to-indigo-900/10 border border-blue-500/15 p-12 md:p-16 text-center">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-blue-600/5 rounded-full blur-[80px] pointer-events-none"></div>
+            <div className="relative z-10">
+              <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
+                Ready to find your next buyer?
+              </h2>
+              <p className="text-slate-400 max-w-md mx-auto text-base mb-8">
+                Join exporters using TradeNexus AI to discover verified B2B leads in 190+ countries.
+              </p>
+              <button
+                onClick={() => openAuthModal(false)}
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-10 rounded-xl transition-all hover:-translate-y-0.5 text-base"
+              >
+                Start Scouting Free
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-8 text-center text-slate-500 text-sm border-t border-slate-900 bg-slate-950">
-        <div className="flex items-center justify-center gap-4 flex-wrap">
-          <a href="/privacy" className="hover:text-slate-300 transition-colors underline underline-offset-2">Privacy Policy</a>
-          <span className="text-slate-700">|</span>
-          <a href="/terms" className="hover:text-slate-300 transition-colors underline underline-offset-2">Terms of Service</a>
-          <span className="text-slate-700">|</span>
-          <p>&copy; {new Date().getFullYear()} TradeNexus AI. All rights reserved.</p>
+      <footer className="py-8 px-6 border-t border-slate-900 bg-slate-950">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700">
+              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+            </div>
+            <span className="text-sm font-bold text-white tracking-tight">
+              TradeNexus <span className="text-blue-500">AI</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-6 text-xs text-slate-500">
+            <a href="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
+            <a href="/terms" className="hover:text-slate-300 transition-colors">Terms of Service</a>
+          </div>
         </div>
       </footer>
 
@@ -204,7 +398,7 @@ export function LandingPage({
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               className="bg-slate-900 text-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 relative"
             >
-              <button 
+              <button
                 onClick={() => setIsAuthModalOpen(false)}
                 className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
               >
@@ -213,8 +407,8 @@ export function LandingPage({
 
               <div className="p-8">
                 <div className="flex flex-col items-center text-center mb-8">
-                  <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mb-4 shadow-inner border border-slate-700">
-                    <span className="w-3 h-3 bg-primary-500 rounded-full animate-pulse shadow-[0_0_12px_rgba(var(--color-primary-500),_0.5)]"></span>
+                  <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center mb-4 border border-slate-700">
+                    <span className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></span>
                   </div>
                   <h2 className="text-2xl font-bold text-white mb-2">
                     {isLoginMode ? 'Welcome back' : 'Create an account'}
@@ -224,7 +418,7 @@ export function LandingPage({
                   </p>
                 </div>
 
-                <button 
+                <button
                   onClick={loginWithGoogle}
                   className="w-full relative group bg-white text-slate-900 font-bold py-3 px-4 rounded-xl shadow-lg transition-all hover:bg-slate-50 mb-6 flex justify-center items-center gap-3"
                 >
@@ -245,25 +439,25 @@ export function LandingPage({
 
                 <form onSubmit={handleEmailAuth} className="w-full flex flex-col gap-4">
                   {authError && <div className="text-red-400 text-sm bg-red-400/10 p-3 rounded-lg border border-red-400/20">{authError}</div>}
-                  
+
                   <div>
                     <label className="block text-xs font-medium text-slate-400 mb-1">Email</label>
                     <input
                       type="email"
                       placeholder="you@company.com"
-                      className="w-full bg-slate-950 border border-slate-800 text-sm rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
+                      className="w-full bg-slate-950 border border-slate-800 text-sm rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-xs font-medium text-slate-400 mb-1">Password</label>
                     <input
                       type="password"
-                      placeholder="••••••••"
-                      className="w-full bg-slate-950 border border-slate-800 text-sm rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-colors"
+                      placeholder="········"
+                      className="w-full bg-slate-950 border border-slate-800 text-sm rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
@@ -279,8 +473,8 @@ export function LandingPage({
                   </button>
 
                   <div className="text-center mt-2">
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setIsLoginMode(!isLoginMode)}
                       className="text-xs text-slate-400 hover:text-white transition-colors underline underline-offset-2"
                     >

@@ -10,7 +10,7 @@ import {
   RegionSuggestion,
   StrategicContext
 } from "../types";
-import { ProductRole, ProductApplication, CountryApplicationMap } from "../types/applicationTypes";
+import { ProductRole, ProductApplication, CountryApplicationMap, ApplicationSourceType } from "../types/applicationTypes";
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 const DEFAULT_MODEL = (import.meta.env.VITE_GEMINI_DEFAULT_MODEL as string | undefined) || "gemini-2.5-flash";
@@ -487,5 +487,119 @@ export const classifyProductRole = async (
     operatorTypes: Array.isArray(parsed.operatorTypes) ? parsed.operatorTypes : [],
     maintainerTypes: Array.isArray(parsed.maintainerTypes) ? parsed.maintainerTypes : [],
     financierTypes: Array.isArray(parsed.financierTypes) ? parsed.financierTypes : []
+  };
+};
+
+export const generateApplicationMap = async (
+  product: ProductDetails,
+  country: string,
+  productRole: ProductRole,
+  context?: StrategicContext,
+  pastMaps?: CountryApplicationMap[],
+  supplierCountry?: string
+): Promise<CountryApplicationMap> => {
+  const ai = getAiClient();
+  const pastMapsContext = pastMaps?.length
+    ? `Past application maps for reference (use as inspiration only — do NOT copy; generate fresh applications from current product+country):\n${JSON.stringify(pastMaps.slice(-5))}`
+    : "No past application maps available. Generate all applications from scratch.";
+
+  const response = await ai.models.generateContent({
+    model: GROUNDING_MODEL,
+    contents: {
+      parts: [{
+        text: `
+          You are an international trade analyst specializing in product-market decomposition.
+
+          Product: ${product.name}
+          Description: ${product.description || product.name}
+          Supplier country: ${supplierCountry || product.supplierCountry || "China"}
+          Target country: ${country}
+          Product role: ${JSON.stringify(productRole)}
+          ${context ? `Strategic context: ${JSON.stringify(context)}` : ""}
+
+          ${pastMapsContext}
+
+          Use Google Search to research ${country}'s industries, infrastructure gaps, economic conditions, climate, regulations, and regional clusters relevant to this product.
+
+          Generate a country-specific application map. Each application must describe a real operational context where companies in ${country} USE this product (not resell it).
+
+          For each application, provide:
+          - name: specific application context (e.g. "commercial irrigation farms")
+          - buyerTypes: specific company types operating in this context
+          - whyRelevant: why this product matters for this application in ${country}
+          - procurementTriggers: events that drive purchase decisions
+          - searchTerms: 3 actual Google search queries to find these companies in ${country}
+          - qualificationSignals: what confirms a company is a real fit
+          - badFitSignals: what indicates a company is NOT a fit
+          - decisionMakers: job titles/roles who make purchasing decisions
+          - confidence: 0-1 how confident you are this application is real for ${country}
+          - sourceType: "discovered" (or "adapted" if inspired by a past map)
+
+          Then compute a priorityScore (0-1) for each application considering:
+          - demand likelihood in ${country}
+          - urgency of need
+          - purchasing power of buyer types
+          - import dependency (higher = more likely to import)
+          - ease of finding these companies online
+          - fit with supplier capability
+
+          Return only a valid JSON object with this exact shape:
+          {
+            "applications": [
+              {
+                "name": "...",
+                "buyerTypes": [...],
+                "whyRelevant": "...",
+                "procurementTriggers": [...],
+                "searchTerms": [...],
+                "qualificationSignals": [...],
+                "badFitSignals": [...],
+                "decisionMakers": [...],
+                "confidence": 0.9,
+                "priorityScore": 0.92,
+                "sourceType": "discovered"
+              }
+            ]
+          }
+        `
+      }]
+    },
+    config: {
+      ...buildThinkingConfig(GROUNDING_MODEL),
+      tools: [{ googleSearch: {} }]
+    }
+  });
+
+  const parsed = extractJsonFromText(response.text) || {};
+  const rawApps = Array.isArray(parsed.applications) ? parsed.applications : [];
+  const evidence = (response.candidates?.[0]?.groundingMetadata?.groundingChunks || [])
+    .map((chunk: any) => chunk.web?.uri)
+    .filter(Boolean);
+
+  const applications: ProductApplication[] = rawApps
+    .map((app: any) => ({
+      id: uuidv4(),
+      name: app.name || "Unknown Application",
+      country: country,
+      buyerTypes: Array.isArray(app.buyerTypes) ? app.buyerTypes : [],
+      whyRelevant: app.whyRelevant || "",
+      procurementTriggers: Array.isArray(app.procurementTriggers) ? app.procurementTriggers : [],
+      searchTerms: Array.isArray(app.searchTerms) ? app.searchTerms : [],
+      qualificationSignals: Array.isArray(app.qualificationSignals) ? app.qualificationSignals : [],
+      badFitSignals: Array.isArray(app.badFitSignals) ? app.badFitSignals : [],
+      decisionMakers: Array.isArray(app.decisionMakers) ? app.decisionMakers : [],
+      priorityScore: typeof app.priorityScore === "number" ? Math.max(0, Math.min(1, app.priorityScore)) : 0.5,
+      confidence: typeof app.confidence === "number" ? Math.max(0, Math.min(1, app.confidence)) : 0.5,
+      sourceType: (app.sourceType as ApplicationSourceType) || "discovered",
+      evidence: evidence.length > 0 ? evidence : undefined
+    }))
+    .sort((a, b) => b.priorityScore - a.priorityScore);
+
+  return {
+    productName: product.name,
+    country,
+    productRole,
+    applications,
+    generatedAt: Date.now()
   };
 };

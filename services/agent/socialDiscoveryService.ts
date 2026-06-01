@@ -33,11 +33,18 @@ export const discoverSocialForCompany = async (
 export const discoverLeadsFromSocial = async (
   productName: string,
   region: string,
-  productContext?: StrategicContext
+  productContext?: StrategicContext,
+  applicationContext?: {
+    application?: string;
+    buyerTypes?: string[];
+    searchTerms?: string[];
+    qualificationSignals?: string[];
+    badFitSignals?: string[];
+  }
 ): Promise<{ profiles: SocialProfileEvidence[]; leads: Lead[] }> => {
   const result = await postJson<{ profiles: SocialProfileEvidence[]; leads: Lead[] }>(
     '/api/agent/social-discovery/region',
-    { productName, region, productContext }
+    { productName, region, productContext, applicationContext }
   );
   return result;
 };

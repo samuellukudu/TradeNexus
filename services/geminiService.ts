@@ -8,6 +8,7 @@ import {
   ChatMessage
 } from "../types";
 import * as browserGemini from "./browserGeminiService";
+import { CountryApplicationMap, ProductApplication, ProductRole, LaneQualificationReport } from "../types/applicationTypes";
 
 const postJson = async <T>(path: string, body: unknown): Promise<T> => {
   const response = await fetch(path, {
@@ -77,7 +78,8 @@ export const analyzeMarkets = async (
   countries?: string[],
   productAssets?: ProductAsset[],
   preComputedContext?: StrategicContext,
-  supplierCountry?: string
+  supplierCountry?: string,
+  productRole?: ProductRole
 ): Promise<RegionSuggestion[]> => {
   if (browserGemini.hasBrowserGeminiKey) {
     return browserGemini.analyzeMarkets(
@@ -87,7 +89,8 @@ export const analyzeMarkets = async (
       countries,
       productAssets,
       preComputedContext,
-      supplierCountry
+      supplierCountry,
+      productRole
     );
   }
 
@@ -98,7 +101,8 @@ export const analyzeMarkets = async (
     countries,
     productAssets,
     preComputedContext,
-    supplierCountry
+    supplierCountry,
+    productRole
   });
   return suggestions;
 };
@@ -129,6 +133,63 @@ export const searchForLeads = async (product: ProductDetails): Promise<Lead[]> =
   return leads;
 };
 
+export const classifyProductRole = async (
+  product: ProductDetails,
+  context?: StrategicContext
+): Promise<ProductRole> => {
+  if (browserGemini.hasBrowserGeminiKey) {
+    return browserGemini.classifyProductRole(product, context);
+  }
+
+  const { productRole } = await postJson<{ productRole: ProductRole }>("/api/ai/classify-product-role", {
+    product,
+    context
+  });
+  return productRole;
+};
+
+export const generateApplicationMap = async (
+  product: ProductDetails,
+  country: string,
+  productRole: ProductRole,
+  context?: StrategicContext,
+  pastMaps?: CountryApplicationMap[],
+  supplierCountry?: string
+): Promise<CountryApplicationMap> => {
+  if (browserGemini.hasBrowserGeminiKey) {
+    return browserGemini.generateApplicationMap(product, country, productRole, context, pastMaps, supplierCountry);
+  }
+
+  const { applicationMap } = await postJson<{ applicationMap: CountryApplicationMap }>("/api/ai/application-map", {
+    product,
+    country,
+    productRole,
+    context,
+    pastMaps,
+    supplierCountry
+  });
+  return applicationMap;
+};
+
+export const allocateLeadBudget = browserGemini.allocateLeadBudget;
+
+export const searchApplicationLane = async (
+  product: ProductDetails,
+  application: ProductApplication,
+  leadTarget: number
+): Promise<Lead[]> => {
+  if (browserGemini.hasBrowserGeminiKey) {
+    return browserGemini.searchApplicationLane(product, application, leadTarget);
+  }
+
+  const { leads } = await postJson<{ leads: Lead[] }>("/api/ai/search-application-lane", {
+    product,
+    application,
+    leadTarget
+  });
+  return leads;
+};
+
 export const verifyLead = async (
   lead: Lead,
   product: ProductDetails
@@ -142,4 +203,21 @@ export const verifyLead = async (
     product
   });
   return result;
+};
+
+export const qualifyLeadsForApplication = async (
+  leads: Lead[],
+  application: ProductApplication,
+  productName: string
+): Promise<LaneQualificationReport> => {
+  if (browserGemini.hasBrowserGeminiKey) {
+    return browserGemini.qualifyLeadsForApplication(leads, application, productName);
+  }
+
+  const { report } = await postJson<{ report: LaneQualificationReport }>("/api/ai/qualify-leads", {
+    leads,
+    application,
+    productName
+  });
+  return report;
 };

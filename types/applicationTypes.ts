@@ -33,6 +33,7 @@ export interface ProductApplication {
   whyRelevant: string;
   procurementTriggers: string[];
   searchTerms: string[];
+  socialSearchTerms?: string[];
   qualificationSignals: string[];
   badFitSignals: string[];
   decisionMakers: string[];
@@ -51,4 +52,42 @@ export interface CountryApplicationMap {
   applications: ProductApplication[];
   /** Unix millisecond timestamp when this map was generated. */
   generatedAt: number;
+}
+
+// --- Post-Discovery Qualification ---
+
+export type LeadQualificationResult = "qualified" | "rejected" | "uncertain";
+
+export interface LeadQualification {
+  leadId: string;
+  companyName: string;
+  result: LeadQualificationResult;
+  /** Which qualification signals the lead matched. */
+  matchedSignals: string[];
+  /** Which bad-fit signals the lead triggered. */
+  triggeredBadFitSignals: string[];
+  /** Short explanation of the qualification decision. */
+  reasoning: string;
+}
+
+export interface LaneQualificationReport {
+  applicationId: string;
+  applicationName: string;
+  totalDiscovered: number;
+  qualified: number;
+  rejected: number;
+  uncertain: number;
+  qualifications: LeadQualification[];
+}
+
+// --- Lane Performance Tracking (for budget refinement) ---
+
+export interface LanePerformanceRecord {
+  applicationId: string;
+  applicationName: string;
+  country: string;
+  qualifiedRate: number;
+  avgConfidence: number;
+  lastRunAt: number;
+  totalRuns: number;
 }

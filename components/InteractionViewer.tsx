@@ -117,6 +117,14 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                 </h2>
                 <div className="text-sm text-slate-400 mt-1 flex flex-wrap items-center gap-2">
                     <span className="bg-slate-700 px-2 py-0.5 rounded text-xs text-slate-300">{lead.region}</span>
+                    {lead.socialOrigin?.originType === 'social-first' && (
+                      <>
+                        <span className="text-slate-500">•</span>
+                        <span className="bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded text-xs text-emerald-300">
+                          Social-first · {lead.socialOrigin.verificationStatus.replace(/_/g, ' ')}
+                        </span>
+                      </>
+                    )}
                     <span className="text-slate-500">•</span>
                     <span>Confidence Match: <span className="text-primary-400 font-bold">{lead.confidenceScore}%</span></span>
                 </div>
@@ -539,11 +547,34 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                                   {sp.relevanceNotes && (
                                     <p className="text-[10px] text-slate-400 leading-relaxed">{sp.relevanceNotes}</p>
                                   )}
+                                  {sp.sourceQuery && (
+                                    <p className="text-[9px] text-slate-600 mt-1 font-mono break-all">
+                                      query: {sp.sourceQuery}
+                                    </p>
+                                  )}
                                   {sp.contactHints && sp.contactHints.length > 0 && (
                                     <div className="flex flex-wrap gap-1 mt-2">
                                       {sp.contactHints.map((hint: string, j: number) => (
                                         <span key={j} className="text-[9px] bg-blue-900/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-800/30">
                                           {hint}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {sp.productFitSignals && sp.productFitSignals.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                      {sp.productFitSignals.slice(0, 4).map((signal: string, j: number) => (
+                                        <span key={j} className="text-[9px] bg-emerald-900/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-800/30">
+                                          {signal}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {sp.verificationSignals && sp.verificationSignals.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                      {sp.verificationSignals.slice(0, 4).map((signal: string, j: number) => (
+                                        <span key={j} className="text-[9px] bg-purple-900/20 text-purple-300 px-1.5 py-0.5 rounded border border-purple-800/30">
+                                          {signal}
                                         </span>
                                       ))}
                                     </div>
@@ -1014,4 +1045,3 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
     </div>
   );
 };
-

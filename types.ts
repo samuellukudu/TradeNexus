@@ -1,5 +1,6 @@
-import { DiscoveryEvidence, SocialProfileEvidence, LeadVerification, LeadScoreBreakdown } from './types/evidenceTypes';
+import { DiscoveryEvidence, SocialProfileEvidence, LeadSocialOrigin, LeadVerification, LeadScoreBreakdown } from './types/evidenceTypes';
 import { AgentRecommendation, OutreachDraft, AgentPlan, CampaignMemory } from './types/agentTypes';
+import { ProductRole } from './types/applicationTypes';
 
 export interface ProductAsset {
   data: string; // Base64 string without data prefix
@@ -41,6 +42,8 @@ export interface ProductDetails {
   assets?: ProductAsset[]; 
   // REPLACED: searchContext (string) -> strategicContext (Structured Object)
   strategicContext?: StrategicContext;
+  // Application-Led Discovery: product role classification for search targeting
+  productRole?: ProductRole;
 }
 
 export interface MarketReportSource {
@@ -161,6 +164,7 @@ export interface Lead {
   // Phase 1+ — Modular agent evidence fields
   evidence?: DiscoveryEvidence[];
   socialDiscovery?: SocialProfileEvidence[];
+  socialOrigin?: LeadSocialOrigin;
   // Phase 4
   verification?: LeadVerification | null;
   scoreBreakdown?: LeadScoreBreakdown | null;
@@ -195,6 +199,9 @@ export interface SearchSession {
   lastScoutTime?: number;
   // NEW: Store the structured memory map
   strategicContext?: StrategicContext;
+  // Application-Led Discovery: product role classification persists on the session
+  // so deployScout and autopilot can reuse it without re-classifying.
+  productRole?: ProductRole;
   // Phase 5+ — Agent pipeline fields
   agentPlan?: AgentPlan | null;
   memory?: CampaignMemory | null;

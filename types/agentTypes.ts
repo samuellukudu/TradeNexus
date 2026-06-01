@@ -2,7 +2,7 @@
 // Shared agent pipeline types for planning, recommendations, memory, and outreach.
 
 import { DiscoveryEvidence, SocialProfileEvidence } from './evidenceTypes';
-import { CountryApplicationMap } from './applicationTypes';
+import { CountryApplicationMap, LanePerformanceRecord } from './applicationTypes';
 
 // --- Agent Plan ---
 
@@ -107,5 +107,7 @@ export interface CampaignMemory {
   platformUsefulness: Record<string, number>;
   buyerTypePerformance: Record<string, number>;
   applicationMapHistory?: CountryApplicationMap[];
+  /** Per-lane performance tracking for budget refinement across scout cycles. */
+  lanePerformance?: Record<string, LanePerformanceRecord>;
   updatedAt: number;
 }

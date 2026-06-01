@@ -70,10 +70,21 @@ export async function scoreLead(
 
   const hasEvidence = lead.evidence && lead.evidence.length > 0;
   const hasSocial = lead.socialDiscovery && lead.socialDiscovery.length > 0;
+  const isSocialFirst = lead.socialOrigin?.originType === 'social-first' || Boolean(lead.searchVector?.startsWith('Social:'));
   const hasVerification = lead.verification;
   const verificationStatus = lead.verification?.status || 'UNVERIFIED';
   const evidenceCount = lead.evidence?.length || 0;
   const socialCount = lead.socialDiscovery?.length || 0;
+  const socialSignals = lead.socialDiscovery?.map(profile => ({
+    platform: profile.platform,
+    profileType: profile.profileType,
+    activityLevel: profile.activityLevel,
+    contactHints: profile.contactHints || [],
+    productFitSignals: profile.productFitSignals || [],
+    verificationSignals: profile.verificationSignals || [],
+    badFitSignals: profile.badFitSignals || [],
+    confidence: profile.confidence,
+  })) || [];
 
   const prompt = `
     You are a Lead Scoring Specialist. Score this lead across 10 dimensions based on available data.
@@ -84,6 +95,8 @@ export async function scoreLead(
     CONFIDENCE: ${lead.confidenceScore}/100
     EVIDENCE RECORDS: ${evidenceCount}
     SOCIAL PROFILES: ${socialCount}
+    SOCIAL-FIRST ORIGIN: ${isSocialFirst ? 'Yes' : 'No'}
+    SOCIAL SIGNALS: ${socialSignals.length ? JSON.stringify(socialSignals) : 'None'}
     VERIFICATION STATUS: ${verificationStatus}
     EMPLOYEE COUNT: ${lead.employeeCount || 'Unknown'}
     MATCH DETAILS: ${lead.matchDetails ? JSON.stringify(lead.matchDetails) : 'None'}
@@ -99,12 +112,12 @@ export async function scoreLead(
     2. productFit — Does this company need/could use ${productName}?
     3. buyerTypeFit — Is this company the right buyer type (distributor, OEM, end user)?
     4. companySizeFit — Is the company appropriately sized?
-    5. evidenceQuality — How good is the evidence? (count, source types, confidence of each piece)
-    6. socialActivity — How active is the company on social media? (HIGH/MEDIUM/LOW from socialDiscovery)
+    5. evidenceQuality — How good is the evidence? For social-first leads, count official profile likelihood, platform diversity, source query traceability, contact/location hints, cross-platform/map/website verification, and bad-fit signals.
+    6. socialActivity — How active is the company on social media? Use recent posts, product photos, service examples, comments/reviews, and HIGH/MEDIUM/LOW from socialDiscovery.
     7. contactability — Can we contact this company? (email, phone, social DM available?)
     8. competitiveOpportunity — Is there a gap in the market? Are competitors weak in this segment?
     9. freshness — How recently was this lead discovered? (recent = higher score)
-    10. overall — Weighted average of above, weighted toward productFit and evidenceQuality.
+    10. overall — Weighted average of above, weighted toward productFit and evidenceQuality. Do not penalize a social-first lead for missing a website when it has clear identity, country/service area, product/application fit, contact/location signals, and reasonable activity or secondary verification.
 
     Also provide:
     - rationale: 2-3 sentences explaining the overall score and key factors

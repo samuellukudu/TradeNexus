@@ -10,7 +10,7 @@ import {
   RegionSuggestion,
   StrategicContext
 } from "../types";
-import { ProductRole, ProductApplication, CountryApplicationMap, ApplicationSourceType } from "../types/applicationTypes";
+import { ProductRole, ProductApplication, CountryApplicationMap, ApplicationSourceType, LaneQualificationReport, LeadQualificationResult } from "../types/applicationTypes";
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 const DEFAULT_MODEL = (import.meta.env.VITE_GEMINI_DEFAULT_MODEL as string | undefined) || "gemini-2.5-flash";
@@ -227,7 +227,8 @@ export const analyzeMarkets = async (
   countries?: string[],
   productAssets?: ProductAsset[],
   preComputedContext?: StrategicContext,
-  supplierCountry?: string
+  supplierCountry?: string,
+  productRole?: ProductRole
 ): Promise<RegionSuggestion[]> => {
   const ai = getAiClient();
   const focus = [
@@ -240,8 +241,8 @@ export const analyzeMarkets = async (
     model: DEFAULT_MODEL,
     contents: {
       parts: preComputedContext
-        ? [{ text: marketPrompt(productName, productDescription, supplierCountry, focus) }]
-        : buildPartsWithAssets(marketPrompt(productName, productDescription, supplierCountry, focus), productAssets)
+        ? [{ text: marketPrompt(productName, productDescription, supplierCountry, focus, productRole) }]
+        : buildPartsWithAssets(marketPrompt(productName, productDescription, supplierCountry, focus, productRole), productAssets)
     },
     config: {
       ...buildThinkingConfig(DEFAULT_MODEL),
@@ -265,13 +266,20 @@ export const analyzeMarkets = async (
   return Array.isArray(parsed) ? parsed.slice(0, 9) : [];
 };
 
-const marketPrompt = (productName: string, productDescription: string, supplierCountry = "China", focus: string) => `
+const marketPrompt = (productName: string, productDescription: string, supplierCountry = "China", focus: string, productRole?: ProductRole) => {
+  const roleBlock = productRole ? `
+Product role: ${productRole.role}.${productRole.operatorTypes.length ? ` Typically operated by ${productRole.operatorTypes.join(", ")}.` : ""}
+` : "";
+
+  return `
   I am a supplier in ${supplierCountry} selling "${productName}".
   Product details: ${productDescription || productName}
+  ${roleBlock}
   ${focus}
   Identify exactly 9 high-potential export markets.
   Return only JSON: [{ "region": "...", "reason": "...", "demandLevel": "High|Medium|Low" }].
 `;
+};
 
 export const generateMarketReport = async (product: ProductDetails, region: string): Promise<MarketReport> => {
   const ai = getAiClient();
@@ -341,10 +349,20 @@ export const searchForLeads = async (product: ProductDetails): Promise<Lead[]> =
           Supplier country: ${product.supplierCountry || "China"}.
           Product details: ${product.description || product.name}
           Strategic context: ${product.strategicContext ? JSON.stringify(product.strategicContext) : "none"}
-          Search for real companies with websites and physical presence in the target region.
+          Search for real companies with physical presence or service area in the target region.
+          Treat social profiles as possible source leads, not only enrichment. Search Facebook business pages,
+          Instagram shops, LinkedIn company pages, TikTok demos, WhatsApp contact mentions, Google Maps, and
+          local marketplace/directory posts directly. A website is helpful but not required when social evidence
+          shows clear company identity, location/service area, category fit, contact/location hints, and activity
+          or secondary verification.
+          Generate social-first queries such as:
+          site:facebook.com "${product.name}" "${product.targetRegion || ""}" "WhatsApp";
+          site:instagram.com "${product.name}" "${product.targetRegion || ""}" "supplier";
+          site:linkedin.com/company "${product.name}" "${product.targetRegion || ""}";
+          site:tiktok.com "${product.name}" "${product.targetRegion || ""}" "installer".
           Return only JSON array. Each item: companyName, website, reason, confidenceScore, sourceUrl, googleMapsUrl,
           country, socialProfiles, employeeCount, revenue, contactEmail, phoneNumber, address, tradeVolume,
-          manufacturingVolume, matchDetails, competitors.
+          manufacturingVolume, matchDetails, competitors, socialDiscovery, socialOrigin.
         `
       }]
     },
@@ -370,6 +388,39 @@ export const searchForLeads = async (product: ProductDetails): Promise<Lead[]> =
     matchDetails: lead.matchDetails,
     summary: lead.reason || "Potential match based on market research.",
     socialProfiles: Array.isArray(lead.socialProfiles) ? lead.socialProfiles : [],
+    socialDiscovery: Array.isArray(lead.socialDiscovery) ? lead.socialDiscovery.map((e: any) => ({
+      id: e.id || uuidv4(),
+      sourceType: e.platform || "other",
+      url: e.url || "",
+      title: e.title || e.companyName || lead.companyName || "Social profile",
+      snippet: e.snippet || e.relevanceNotes,
+      confidence: typeof e.confidence === "number" ? e.confidence : normalizeScore(lead.confidenceScore) / 100,
+      foundAt: Date.now(),
+      foundBy: "browserLeadSearch",
+      validationStatus: "UNVERIFIED",
+      platform: e.platform || "other",
+      handle: e.handle,
+      companyName: e.companyName || lead.companyName,
+      country: e.country || lead.country,
+      city: e.city,
+      sourceQuery: e.sourceQuery,
+      isOfficialLikely: Boolean(e.isOfficialLikely),
+      profileType: e.profileType || "unknown",
+      activityLevel: e.activityLevel || "UNKNOWN",
+      activityEvidence: e.activityEvidence,
+      contactHints: Array.isArray(e.contactHints) ? e.contactHints : [],
+      productFitSignals: Array.isArray(e.productFitSignals) ? e.productFitSignals : [],
+      verificationSignals: Array.isArray(e.verificationSignals) ? e.verificationSignals : [],
+      badFitSignals: Array.isArray(e.badFitSignals) ? e.badFitSignals : [],
+      relevanceNotes: e.relevanceNotes,
+    })) : [],
+    socialOrigin: lead.socialOrigin?.originType === "social-first" ? {
+      originType: "social-first",
+      primaryProfileUrl: lead.socialOrigin.primaryProfileUrl || lead.socialDiscovery?.[0]?.url || lead.socialProfiles?.[0]?.url || "",
+      primaryPlatform: lead.socialOrigin.primaryPlatform || lead.socialDiscovery?.[0]?.platform || lead.socialProfiles?.[0]?.platform || "other",
+      evidence: Array.isArray(lead.socialDiscovery) ? lead.socialDiscovery : [],
+      verificationStatus: lead.socialOrigin.verificationStatus || (lead.googleMapsUrl ? "partially_verified" : "unverified"),
+    } : undefined,
     employeeCount: lead.employeeCount,
     revenue: lead.revenue,
     contactEmail: lead.contactEmail,
@@ -421,6 +472,137 @@ const normalizeScore = (score: unknown) => {
   if (typeof score !== "number") return 85;
   if (score > 0 && score <= 1) return Math.round(score * 100);
   return Math.max(0, Math.min(100, Math.round(score)));
+};
+
+/**
+ * POST-DISCOVERY QUALIFICATION
+ * Screens a batch of discovered leads against the application's qualification signals
+ * and bad-fit signals. Runs as a single lightweight LLM call (no Google Search).
+ * Returns a per-lead qualification with matched/triggered signals and reasoning.
+ */
+export const qualifyLeadsForApplication = async (
+  leads: Lead[],
+  application: ProductApplication,
+  productName: string
+): Promise<LaneQualificationReport> => {
+  if (leads.length === 0) {
+    return {
+      applicationId: application.id,
+      applicationName: application.name,
+      totalDiscovered: 0,
+      qualified: 0,
+      rejected: 0,
+      uncertain: 0,
+      qualifications: [],
+    };
+  }
+
+  const ai = getAiClient();
+
+  // Build a compact lead list for the prompt
+  const leadList = leads.map((l, i) =>
+    `${i + 1}. ${l.companyName} | ${l.website || "no website"} | ${l.summary || ""} | confidence: ${l.confidenceScore}`
+  ).join("\n");
+
+  const response = await ai.models.generateContent({
+    model: DEFAULT_MODEL,
+    contents: {
+      parts: [{
+        text: `
+          You are a lead qualification auditor. Your job is to SCREEN a batch of discovered leads against a specific application profile.
+
+          APPLICATION: ${application.name}
+          COUNTRY: ${application.country}
+          PRODUCT: ${productName}
+
+          ═══════════════════════════════════
+          QUALIFICATION SIGNALS — a lead SHOULD match several of these:
+          ${application.qualificationSignals.map(s => `• ${s}`).join("\n")}
+
+          ═══════════════════════════════════
+          BAD-FIT SIGNALS — a lead matching ANY of these should be REJECTED:
+          ${application.badFitSignals.map(s => `• ${s}`).join("\n")}
+
+          ═══════════════════════════════════
+          DISCOVERED LEADS TO SCREEN:
+          ${leadList}
+
+          ═══════════════════════════════════
+          For EACH lead above, determine:
+          - "qualified" — matches 2+ qualification signals AND triggers ZERO bad-fit signals
+          - "rejected" — triggers ANY bad-fit signal OR matches zero qualification signals
+          - "uncertain" — matches only 1 qualification signal with no bad-fit triggers, or insufficient information to decide
+
+          Return ONLY a JSON object:
+          {
+            "qualifications": [
+              {
+                "leadIndex": 1,
+                "result": "qualified",
+                "matchedSignals": ["signal text..."],
+                "triggeredBadFitSignals": [],
+                "reasoning": "one sentence why"
+              }
+            ]
+          }
+        `
+      }]
+    },
+    config: {
+      ...buildThinkingConfig(DEFAULT_MODEL),
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          qualifications: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                leadIndex: { type: Type.NUMBER },
+                result: { type: Type.STRING, enum: ["qualified", "rejected", "uncertain"] },
+                matchedSignals: { type: Type.ARRAY, items: { type: Type.STRING } },
+                triggeredBadFitSignals: { type: Type.ARRAY, items: { type: Type.STRING } },
+                reasoning: { type: Type.STRING },
+              },
+              required: ["leadIndex", "result", "reasoning"]
+            }
+          }
+        },
+        required: ["qualifications"]
+      }
+    }
+  });
+
+  const parsed = extractJsonFromText(response.text) || {};
+  const rawQualifications = Array.isArray(parsed.qualifications) ? parsed.qualifications : [];
+
+  const qualifications: LeadQualification[] = rawQualifications.map((q: any) => {
+    const idx = (q.leadIndex || 1) - 1;
+    const lead = leads[idx];
+    return {
+      leadId: lead?.id || "",
+      companyName: lead?.companyName || "Unknown",
+      result: (q.result as LeadQualificationResult) || "uncertain",
+      matchedSignals: Array.isArray(q.matchedSignals) ? q.matchedSignals : [],
+      triggeredBadFitSignals: Array.isArray(q.triggeredBadFitSignals) ? q.triggeredBadFitSignals : [],
+      reasoning: q.reasoning || "",
+    };
+  });
+
+  const qualified = qualifications.filter(q => q.result === "qualified").length;
+  const rejected = qualifications.filter(q => q.result === "rejected").length;
+  const uncertain = qualifications.filter(q => q.result === "uncertain").length;
+
+  return {
+    applicationId: application.id,
+    applicationName: application.name,
+    totalDiscovered: leads.length,
+    qualified,
+    rejected,
+    uncertain,
+    qualifications,
+  };
 };
 
 export const classifyProductRole = async (
@@ -533,6 +715,7 @@ export const generateApplicationMap = async (
           - whyRelevant: why this product matters for this application in ${country}
           - procurementTriggers: events that drive purchase decisions
           - searchTerms: 3 actual Google search queries to find these companies in ${country}
+          - socialSearchTerms: 3 actual social-first queries for Facebook, Instagram, LinkedIn, TikTok, WhatsApp, Maps, or local marketplace surfaces
           - qualificationSignals: what confirms a company is a real fit
           - badFitSignals: what indicates a company is NOT a fit
           - decisionMakers: job titles/roles who make purchasing decisions
@@ -558,6 +741,7 @@ export const generateApplicationMap = async (
                 "whyRelevant": "...",
                 "procurementTriggers": [...],
                 "searchTerms": [...],
+                "socialSearchTerms": [...],
                 "qualificationSignals": [...],
                 "badFitSignals": [...],
                 "decisionMakers": [...],
@@ -593,6 +777,7 @@ export const generateApplicationMap = async (
       whyRelevant: app.whyRelevant || "",
       procurementTriggers: Array.isArray(app.procurementTriggers) ? app.procurementTriggers : [],
       searchTerms: Array.isArray(app.searchTerms) ? app.searchTerms : [],
+      socialSearchTerms: Array.isArray(app.socialSearchTerms) ? app.socialSearchTerms : [],
       qualificationSignals: Array.isArray(app.qualificationSignals) ? app.qualificationSignals : [],
       badFitSignals: Array.isArray(app.badFitSignals) ? app.badFitSignals : [],
       decisionMakers: Array.isArray(app.decisionMakers) ? app.decisionMakers : [],
@@ -662,38 +847,113 @@ export const searchApplicationLane = async (
   leadTarget: number
 ): Promise<Lead[]> => {
   const ai = getAiClient();
+
+  // Build product-role-aware targeting instruction
+  const productRole = product.productRole;
+  let targetingDirective = "Find companies that OPERATE in this application context.";
+  if (productRole) {
+    switch (productRole.role) {
+      case "component":
+      case "raw material":
+        targetingDirective = `Find MANUFACTURERS and OEMs that INCORPORATE this ${productRole.role} into their products. Target ${productRole.operatorTypes.join(", ") || "factories and production facilities"}.`;
+        break;
+      case "finished system":
+      case "machine or equipment":
+        targetingDirective = `Find END USERS and OPERATORS of this ${productRole.role}. Target ${productRole.operatorTypes.join(", ") || "facilities and operations"} that USE this equipment. Also include ${productRole.resellerTypes.join(", ") || "dealers and distributors"} when they serve as the local purchasing channel.`;
+        break;
+      case "consumable":
+      case "spare part":
+        targetingDirective = `Find COMPANIES that CONSUME or REPLACE this ${productRole.role} regularly. Target ${productRole.operatorTypes.join(", ") || "maintenance and operations teams"}. Also include ${productRole.maintainerTypes.join(", ") || "service providers"} who purchase on behalf of end users.`;
+        break;
+      case "installation or service":
+        targetingDirective = `Find PROJECT OWNERS and CONTRACTORS that hire ${productRole.installerTypes.join(", ") || "installation and service providers"}. Also include ${productRole.financierTypes.join(", ") || "project financiers"} who specify and procure these services.`;
+        break;
+      case "software-enabled system":
+        targetingDirective = `Find ORGANIZATIONS that DEPLOY this ${productRole.role}. Target ${productRole.operatorTypes.join(", ") || "IT and operations teams"} who both purchase and operate the system.`;
+        break;
+      default:
+        targetingDirective = `Find companies that OPERATE in this application context. Target ${productRole.operatorTypes.join(", ") || "end users"} and ${productRole.resellerTypes.join(", ") || "channel partners"}.`;
+    }
+  }
+
   const response = await ai.models.generateContent({
     model: GROUNDING_MODEL,
     contents: {
       parts: [{
         text: `
-          You are finding OPERATIONAL END USERS for a B2B product. Do NOT search for distributors, importers, or resellers.
+          You are a B2B lead discovery agent. ${targetingDirective}
 
+          ═══════════════════════════════════════════
+          PRODUCT & APPLICATION CONTEXT
+          ═══════════════════════════════════════════
           Product: ${product.name}
           Description: ${product.description || product.name}
           Supplier country: ${product.supplierCountry || "China"}
+          ${productRole ? `Product role: ${productRole.role} (resold by: ${productRole.resellerTypes.join(", ") || "various"}, installed by: ${productRole.installerTypes.join(", ") || "various"}, operated by: ${productRole.operatorTypes.join(", ") || "various"})` : ""}
 
-          Application context:
-          - Application: ${application.name}
-          - Why relevant: ${application.whyRelevant}
-          - Buyer types to find: ${application.buyerTypes.join(", ")}
-          - Qualification signals: ${application.qualificationSignals.join("; ")}
-          - Bad-fit signals (avoid these): ${application.badFitSignals.join("; ")}
-          - Decision makers to note: ${application.decisionMakers.join(", ")}
+          Application: ${application.name}
+          Why this matters in ${application.country}: ${application.whyRelevant}
+          Procurement triggers: ${application.procurementTriggers.join("; ")}
 
-          Search for up to ${leadTarget} real companies in ${application.country} that OPERATE in this application context.
-          Use these search queries: ${application.searchTerms.join(" | ")}
+          ═══════════════════════════════════════════
+          🔴 MUST HAVE — reject any company missing these
+          ═══════════════════════════════════════════
+          ${application.qualificationSignals.map(s => `• ${s}`).join("\n          ")}
+
+          ═══════════════════════════════════════════
+          🟡 PREFERRED — rank higher if present
+          ═══════════════════════════════════════════
+          • Decision makers reachable: ${application.decisionMakers.join(", ")}
+          • Active procurement cycle suggested by recent news, expansions, or tender participation
+          • Physical operations verifiable via Google Maps, directory listings, or cross-platform profiles
+          • Buyer type matches: ${application.buyerTypes.join(", ")}
+
+          ═══════════════════════════════════════════
+          🔵 SEARCH STRATEGY — execute in this order
+          ═══════════════════════════════════════════
+          1. PRIMARY: ${application.searchTerms.join(" | ")}
+          2. SOCIAL-FIRST: ${(application.socialSearchTerms || []).join(" | ") || "site:facebook.com \"" + product.name + "\" \"" + application.country + "\"; site:instagram.com \"" + product.name + "\" \"" + application.country + "\"; site:linkedin.com/company \"" + product.name + "\" \"" + application.country + "\""}
+          3. MAPS & DIRECTORIES: Google Maps business listings, chambers of commerce, industry association member directories in ${application.country}
+
+          ═══════════════════════════════════════════
+          ⛔ AVOID — do NOT include companies that match these
+          ═══════════════════════════════════════════
+          ${application.badFitSignals.map(s => `• ${s}`).join("\n          ")}
+
+          ═══════════════════════════════════════════
+          OUTPUT — up to ${leadTarget} real companies
+          ═══════════════════════════════════════════
+          Social profiles are valid source leads. A website is NOT required if social evidence shows clear business identity, target-country fit, application fit, contact/location hints, and activity/verification signals.
 
           Return only a JSON array. Each item:
           {
             "companyName": "...",
             "website": "...",
-            "reason": "why this company fits the application",
+            "reason": "specific fit to this application, referencing qualification signals",
             "confidenceScore": 85,
             "sourceUrl": "...",
             "googleMapsUrl": "...",
             "country": "${application.country}",
             "socialProfiles": [],
+            "socialDiscovery": [
+              {
+                "platform": "facebook",
+                "url": "...",
+                "title": "...",
+                "companyName": "...",
+                "country": "${application.country}",
+                "city": "...",
+                "profileType": "company",
+                "activityLevel": "HIGH",
+                "contactHints": ["WhatsApp", "phone"],
+                "productFitSignals": ["product photos", "installer language"],
+                "verificationSignals": ["Google Maps match", "same phone on directory"],
+                "badFitSignals": [],
+                "confidence": 0.82,
+                "sourceQuery": "site:facebook.com ..."
+              }
+            ],
+            "socialOrigin": { "originType": "social-first", "primaryProfileUrl": "...", "primaryPlatform": "facebook", "verificationStatus": "partially_verified" },
             "employeeCount": "...",
             "revenue": "...",
             "contactEmail": "...",
@@ -728,6 +988,39 @@ export const searchApplicationLane = async (
     matchDetails: lead.matchDetails,
     summary: lead.reason || `Potential ${application.buyerTypes[0] || "end user"} match via application-led discovery.`,
     socialProfiles: Array.isArray(lead.socialProfiles) ? lead.socialProfiles : [],
+    socialDiscovery: Array.isArray(lead.socialDiscovery) ? lead.socialDiscovery.map((e: any) => ({
+      id: e.id || uuidv4(),
+      sourceType: e.platform || "other",
+      url: e.url || "",
+      title: e.title || e.companyName || lead.companyName || "Social profile",
+      snippet: e.snippet || e.relevanceNotes,
+      confidence: typeof e.confidence === "number" ? e.confidence : normalizeScore(lead.confidenceScore) / 100,
+      foundAt: Date.now(),
+      foundBy: "applicationLaneSearch",
+      validationStatus: "UNVERIFIED",
+      platform: e.platform || "other",
+      handle: e.handle,
+      companyName: e.companyName || lead.companyName,
+      country: e.country || application.country,
+      city: e.city,
+      sourceQuery: e.sourceQuery,
+      isOfficialLikely: Boolean(e.isOfficialLikely),
+      profileType: e.profileType || "unknown",
+      activityLevel: e.activityLevel || "UNKNOWN",
+      activityEvidence: e.activityEvidence,
+      contactHints: Array.isArray(e.contactHints) ? e.contactHints : [],
+      productFitSignals: Array.isArray(e.productFitSignals) ? e.productFitSignals : [],
+      verificationSignals: Array.isArray(e.verificationSignals) ? e.verificationSignals : [],
+      badFitSignals: Array.isArray(e.badFitSignals) ? e.badFitSignals : [],
+      relevanceNotes: e.relevanceNotes,
+    })) : [],
+    socialOrigin: lead.socialOrigin?.originType === "social-first" ? {
+      originType: "social-first",
+      primaryProfileUrl: lead.socialOrigin.primaryProfileUrl || lead.socialDiscovery?.[0]?.url || lead.socialProfiles?.[0]?.url || "",
+      primaryPlatform: lead.socialOrigin.primaryPlatform || lead.socialDiscovery?.[0]?.platform || lead.socialProfiles?.[0]?.platform || "other",
+      evidence: Array.isArray(lead.socialDiscovery) ? lead.socialDiscovery : [],
+      verificationStatus: lead.socialOrigin.verificationStatus || (lead.googleMapsUrl ? "partially_verified" : "unverified"),
+    } : undefined,
     employeeCount: lead.employeeCount,
     revenue: lead.revenue,
     contactEmail: lead.contactEmail,
@@ -746,7 +1039,7 @@ export const searchApplicationLane = async (
     logs: [{
       timestamp: new Date().toLocaleTimeString(),
       actor: "SYSTEM",
-      message: `Lead discovered via application lane: ${application.name}.${lead.googleMapsUrl ? `\nLocation: ${lead.googleMapsUrl}` : ""}`
+      message: `Lead discovered via application lane: ${application.name}.${lead.googleMapsUrl ? `\nLocation: ${lead.googleMapsUrl}` : ""}${lead.socialOrigin?.originType === "social-first" ? `\nOrigin: social-first (${lead.socialOrigin.primaryPlatform})` : ""}`
     }]
   }));
 };

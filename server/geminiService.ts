@@ -3,6 +3,7 @@ import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
 import fs from "node:fs";
 import path from "node:path";
 import { Lead, LeadStatus, ProductDetails, ProductAsset, RegionSuggestion, MarketReport, StrategicContext, ChatMessage } from "../types";
+import { ProductRole, ProductApplication, CountryApplicationMap, ApplicationSourceType } from "../types/applicationTypes";
 import { v4 as uuidv4 } from 'uuid';
 
 const loadLocalEnv = () => {
@@ -156,6 +157,12 @@ const formatLabel = (key: string) => {
     .replace(/[_-]+/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const normalizeLeadScore = (score: unknown) => {
+  if (typeof score !== "number") return 85;
+  if (score > 0 && score <= 1) return Math.round(score * 100);
+  return Math.max(0, Math.min(100, Math.round(score)));
 };
 
 export const generateProspectingMessage = async (
@@ -687,13 +694,27 @@ const executeLeadBatch = async (
 
       STRICT VERIFICATION PROTOCOL (MANDATORY):
       1. Your goal is to find companies with a PHYSICAL PRESENCE in ${product.targetRegion}.
-      2. For every potential lead, you MUST search for their "Google Maps URL" or "Street Address".
-      3. If a company cannot be found on a Map, DISCARD IT. We only want verified businesses.
-      4. Populate the 'googleMapsUrl' field with the direct link found.
-      5. Populate the 'country' field with the physical country of the company's HQ.
-      6. COMPETITIVE INTEL: Identify 1-2 likely current suppliers or competitors they might be using. If unknown, infer based on market leaders in that region. Provide a brief displacement strategy.
+      2. Use social profiles as possible source leads, not only enrichment. Search Facebook pages, Instagram shops, LinkedIn company pages, TikTok demos, WhatsApp mentions, Google Maps listings, and local directories directly.
+      3. For every potential lead, look for at least one secondary verification signal: Google Maps URL, street address, website, directory listing, repeated phone/name/address, cross-platform profile, or visible recent social activity.
+      4. If the lead has no website, it can still qualify when the social profile has a clear business identity, target-country/service-area signal, product/application fit, contact or location hints, and activity/verification signals.
+      5. Populate the 'googleMapsUrl' field when found, but do not discard otherwise strong social-first businesses solely because Maps is unavailable.
+      6. Populate the 'country' field with the physical country of the company's HQ or service area.
+      7. COMPETITIVE INTEL: Identify 1-2 likely current suppliers or competitors they might be using. If unknown, infer based on market leaders in that region. Provide a brief displacement strategy.
 
-      Return ONLY a valid JSON array of lead objects. Each object must have these keys: companyName, website, reason, confidenceScore (number), sourceUrl, googleMapsUrl, country, socialProfiles (array of {platform, url}), employeeCount, revenue, contactEmail, phoneNumber, address, tradeVolume, manufacturingVolume, matchDetails ({industryFit, sizeFit, locationFit}), competitors (array of {name, strengths, weaknesses, displacementStrategy}).
+      SOCIAL-FIRST QUERY EXAMPLES TO USE OR ADAPT:
+      - site:facebook.com "${product.name}" "${product.targetRegion}" "WhatsApp"
+      - site:instagram.com "${product.name}" "${product.targetRegion}" "supplier"
+      - site:linkedin.com/company "${product.name}" "${product.targetRegion}" "distributor"
+      - site:tiktok.com "${product.name}" "${product.targetRegion}" "installer"
+      - "WhatsApp" "${product.name}" "${product.targetRegion}"
+      - "${product.name}" "${product.targetRegion}" "Facebook"
+
+      SOCIAL EVIDENCE:
+      For leads found primarily through social media, include socialDiscovery and socialOrigin fields when possible:
+      - socialDiscovery: array with platform, url, title, snippet, companyName, country, city, profileType, activityLevel, contactHints, productFitSignals, verificationSignals, badFitSignals, confidence, sourceQuery.
+      - socialOrigin: { originType: "social-first", primaryProfileUrl, primaryPlatform, verificationStatus }.
+
+      Return ONLY a valid JSON array of lead objects. Each object must have these keys: companyName, website, reason, confidenceScore (number), sourceUrl, googleMapsUrl, country, socialProfiles (array of {platform, url}), socialDiscovery, socialOrigin, employeeCount, revenue, contactEmail, phoneNumber, address, tradeVolume, manufacturingVolume, matchDetails ({industryFit, sizeFit, locationFit}), competitors (array of {name, strengths, weaknesses, displacementStrategy}).
       Do NOT wrap in markdown. Raw JSON only.
     `;
 
@@ -737,7 +758,7 @@ const executeLeadBatch = async (
         // Attach grounding sources to each lead for traceability
         const leadsWithSources = rawLeads.map((l: any) => ({ ...l, _sources: groundingSources }));
 
-        // --- STRICT VERIFICATION FILTER ---
+        // --- VERIFICATION FILTER ---
         const verifiedLeads = leadsWithSources.filter((l: any) => {
             const hasMapsUrl = l.googleMapsUrl && (
                 l.googleMapsUrl.includes('google.com/maps') ||
@@ -746,9 +767,16 @@ const executeLeadBatch = async (
                 l.googleMapsUrl.includes('maps.app.goo.gl') ||
                 l.googleMapsUrl.includes('maps.google')
             );
+            const hasSocialEvidence = Array.isArray(l.socialDiscovery) && l.socialDiscovery.some((e: any) => {
+                const hasContact = Array.isArray(e.contactHints) && e.contactHints.length > 0;
+                const hasVerification = Array.isArray(e.verificationSignals) && e.verificationSignals.length > 0;
+                const hasFit = Array.isArray(e.productFitSignals) && e.productFitSignals.length > 0;
+                const isBusinessProfile = ['company', 'reseller'].includes(String(e.profileType || '').toLowerCase());
+                return e.url && isBusinessProfile && (hasContact || hasVerification) && hasFit;
+            });
             
-            if (!hasMapsUrl) {
-                return false; // Discard silently to clean logs
+            if (!hasMapsUrl && !hasSocialEvidence) {
+                return false; // Require maps or strong social-first evidence.
             }
 
             // Geographic Sanity Check
@@ -844,6 +872,39 @@ const runSearchVector = async (
             matchDetails: l.matchDetails,
             summary: l.reason,
             socialProfiles: Array.isArray(l.socialProfiles) ? l.socialProfiles : [],
+            socialDiscovery: Array.isArray(l.socialDiscovery) ? l.socialDiscovery.map((e: any) => ({
+                id: e.id || uuidv4(),
+                sourceType: e.platform || 'other',
+                url: e.url || '',
+                title: e.title || e.companyName || l.companyName,
+                snippet: e.snippet || e.relevanceNotes,
+                confidence: typeof e.confidence === 'number' ? e.confidence : score / 100,
+                foundAt: Date.now(),
+                foundBy: 'leadSearch',
+                validationStatus: 'UNVERIFIED',
+                platform: e.platform || 'other',
+                handle: e.handle,
+                companyName: e.companyName || l.companyName,
+                country: e.country || l.country,
+                city: e.city,
+                sourceQuery: e.sourceQuery,
+                isOfficialLikely: Boolean(e.isOfficialLikely),
+                profileType: e.profileType || 'unknown',
+                activityLevel: e.activityLevel || 'UNKNOWN',
+                activityEvidence: e.activityEvidence,
+                contactHints: Array.isArray(e.contactHints) ? e.contactHints : [],
+                productFitSignals: Array.isArray(e.productFitSignals) ? e.productFitSignals : [],
+                verificationSignals: Array.isArray(e.verificationSignals) ? e.verificationSignals : [],
+                badFitSignals: Array.isArray(e.badFitSignals) ? e.badFitSignals : [],
+                relevanceNotes: e.relevanceNotes,
+            })) : [],
+            socialOrigin: l.socialOrigin?.originType === 'social-first' ? {
+                originType: 'social-first',
+                primaryProfileUrl: l.socialOrigin.primaryProfileUrl || l.socialDiscovery?.[0]?.url || l.socialProfiles?.[0]?.url || '',
+                primaryPlatform: l.socialOrigin.primaryPlatform || l.socialDiscovery?.[0]?.platform || l.socialProfiles?.[0]?.platform || 'other',
+                evidence: Array.isArray(l.socialDiscovery) ? l.socialDiscovery : [],
+                verificationStatus: l.socialOrigin.verificationStatus || (l.googleMapsUrl ? 'partially_verified' : 'unverified'),
+            } : undefined,
             employeeCount: l.employeeCount,
             revenue: l.revenue,
             contactEmail: l.contactEmail,
@@ -858,7 +919,7 @@ const runSearchVector = async (
             logs: [{
                 timestamp: new Date().toLocaleTimeString(),
                 actor: 'SYSTEM',
-                message: `Lead discovered via ${vectorName}.\nLocation Verified: ${l.googleMapsUrl}\nHQ: ${l.country || "Detected in Region"}${l._sources?.length ? `\nSearch Sources: ${l._sources.length} URLs` : ''}`
+                message: `Lead discovered via ${vectorName}.\nLocation: ${l.googleMapsUrl || l.address || "Social-first evidence"}\nHQ/Service Area: ${l.country || "Detected in Region"}${l.socialOrigin?.originType === 'social-first' ? `\nOrigin: social-first (${l.socialOrigin.primaryPlatform})` : ''}${l._sources?.length ? `\nSearch Sources: ${l._sources.length} URLs` : ''}`
             }]
         };
     });

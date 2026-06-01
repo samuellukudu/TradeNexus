@@ -68,7 +68,26 @@ const extractJsonFromText = (text: string | undefined): any => {
 
 // --- Main exports ---
 
-const PLATFORMS: SocialPlatform[] = ['linkedin', 'facebook', 'instagram', 'youtube', 'tiktok', 'x'];
+const PLATFORMS: SocialPlatform[] = ['linkedin', 'facebook', 'instagram', 'youtube', 'tiktok', 'x', 'whatsapp', 'maps'];
+
+const normalizePlatform = (platform: unknown): SocialPlatform => {
+  const value = String(platform || '').toLowerCase();
+  if (value.includes('facebook')) return 'facebook';
+  if (value.includes('instagram')) return 'instagram';
+  if (value.includes('linkedin')) return 'linkedin';
+  if (value.includes('youtube')) return 'youtube';
+  if (value.includes('tiktok')) return 'tiktok';
+  if (value.includes('whatsapp')) return 'whatsapp';
+  if (value.includes('maps') || value.includes('google')) return 'maps';
+  if (value === 'x' || value.includes('twitter')) return 'x';
+  return 'other';
+};
+
+const normalizeActivity = (activity: unknown): SocialActivityLevel => {
+  const value = String(activity || '').toUpperCase();
+  if (value === 'HIGH' || value === 'MEDIUM' || value === 'LOW') return value;
+  return 'UNKNOWN';
+};
 
 export async function discoverSocialForCompany(
   companyName: string,
@@ -91,7 +110,7 @@ export async function discoverSocialForCompany(
     ${websiteHint}
     ${productHint}
 
-    TASK: Search for this company's presence on these platforms: LinkedIn, Facebook, Instagram, YouTube, TikTok, X (Twitter).
+    TASK: Search for this company's presence on these platforms: LinkedIn, Facebook, Instagram, YouTube, TikTok, X (Twitter), WhatsApp contact links, and Google Maps/local listings.
 
     For each platform where you find a profile, classify it:
 
@@ -116,14 +135,19 @@ export async function discoverSocialForCompany(
     - 0.0-0.29: Very uncertain
 
     Return a JSON object with a "profiles" array. Each profile object must have these keys:
-    - platform: one of "linkedin", "facebook", "instagram", "youtube", "tiktok", "x", "other"
+    - platform: one of "linkedin", "facebook", "instagram", "youtube", "tiktok", "x", "whatsapp", "maps", "other"
     - url: the full profile URL
+    - sourceQuery: the search query that found this profile
+    - country: country or service area if visible
+    - city: city if visible
     - handle: the username or handle (if visible)
     - isOfficialLikely: boolean — true if this appears to be the official company profile
     - profileType: "company", "employee", "founder", "reseller", "community", or "unknown"
     - activityLevel: "HIGH", "MEDIUM", "LOW", or "UNKNOWN"
     - activityEvidence: short description of what activity is visible (e.g., "Last post 3 days ago, 50+ comments")
     - contactHints: array of strings — any contact info visible in the profile or recent posts (email, phone, WhatsApp)
+    - verificationSignals: array of strings — maps, website, address, repeated phone/name, cross-platform links
+    - badFitSignals: array of strings — inactive, personal profile, group/community, wrong country, weak product fit
     - relevanceNotes: brief explanation of why this profile is or isn't relevant
     - confidence: number 0-1
 
@@ -155,7 +179,7 @@ export async function discoverSocialForCompany(
 
     return parsed.profiles.map((p: any) => ({
       id: uuidv4(),
-      sourceType: (p.platform as EvidenceSourceType) || 'web',
+      sourceType: normalizePlatform(p.platform) as EvidenceSourceType,
       url: p.url || '',
       title: `${companyName} - ${p.platform}`,
       snippet: p.relevanceNotes,
@@ -163,13 +187,19 @@ export async function discoverSocialForCompany(
       foundAt: now,
       foundBy: 'socialDiscovery',
       validationStatus: 'UNVERIFIED' as const,
-      platform: p.platform || 'other',
+      platform: normalizePlatform(p.platform),
       handle: p.handle,
+      companyName,
+      country: p.country,
+      city: p.city,
+      sourceQuery: p.sourceQuery,
       isOfficialLikely: Boolean(p.isOfficialLikely),
       profileType: (p.profileType as SocialProfileType) || 'unknown',
-      activityLevel: (p.activityLevel as SocialActivityLevel) || 'UNKNOWN',
+      activityLevel: normalizeActivity(p.activityLevel),
       activityEvidence: p.activityEvidence,
       contactHints: Array.isArray(p.contactHints) ? p.contactHints : [],
+      verificationSignals: Array.isArray(p.verificationSignals) ? p.verificationSignals : [],
+      badFitSignals: Array.isArray(p.badFitSignals) ? p.badFitSignals : [],
       relevanceNotes: p.relevanceNotes,
     }));
 
@@ -182,7 +212,14 @@ export async function discoverSocialForCompany(
 export async function discoverLeadsFromSocial(
   productName: string,
   region: string,
-  productContext?: StrategicContext
+  productContext?: StrategicContext,
+  applicationContext?: {
+    application?: string;
+    buyerTypes?: string[];
+    searchTerms?: string[];
+    qualificationSignals?: string[];
+    badFitSignals?: string[];
+  }
 ): Promise<SocialProfileEvidence[]> {
   const now = Date.now();
 
@@ -192,6 +229,16 @@ export async function discoverLeadsFromSocial(
   const excludeHint = productContext?.exclusions
     ? `EXCLUDE these company types: ${productContext.exclusions}.`
     : '';
+  const applicationHint = applicationContext?.application
+    ? `
+    APPLICATION LANE:
+    - Application: ${applicationContext.application}
+    - Buyer types: ${(applicationContext.buyerTypes || []).join(', ') || 'unknown'}
+    - Existing lane queries: ${(applicationContext.searchTerms || []).join(' | ') || 'none'}
+    - Qualification signals: ${(applicationContext.qualificationSignals || []).join('; ') || 'none'}
+    - Bad-fit signals: ${(applicationContext.badFitSignals || []).join('; ') || 'none'}
+    `
+    : '';
 
   const prompt = `
     You are a B2B Sales Intelligence Researcher. Your job is to find potential buyer or distributor companies in a target region by searching for their social media presence.
@@ -200,13 +247,24 @@ export async function discoverLeadsFromSocial(
     TARGET REGION: ${region}
     ${productHint}
     ${excludeHint}
+    ${applicationHint}
 
-    TASK: Search social media platforms (LinkedIn, Facebook, Instagram, YouTube, TikTok, X) for companies in ${region} that could be potential buyers, distributors, or importers of ${productName}.
+    TASK: Search social media platforms and social-adjacent listings (Facebook pages, Instagram shops, LinkedIn company pages, TikTok demos, YouTube channels, WhatsApp contact mentions, Google Maps snippets, and local marketplace posts) for companies in ${region} that could be potential buyers, distributors, installers, retailers, contractors, importers, or operators for ${productName}.
+
+    SOCIAL-FIRST QUERY PLANNING:
+    Generate and use platform-specific queries combining product/application terms, buyer-type terms, country/city terms, local vocabulary, and business-operation terms.
+    Examples:
+    - site:facebook.com "${productName}" "${region}" "WhatsApp"
+    - site:instagram.com "${productName}" "${region}" "supplier"
+    - site:linkedin.com/company "${productName}" "${region}" "distributor"
+    - site:tiktok.com "${productName}" "${region}" "installer"
+    - "WhatsApp" "${productName}" "${region}"
 
     For each company you find, provide their social profile details. Focus on:
     1. Companies that match the ideal buyer profile
     2. Companies with active social media presence (indicates they're real businesses)
     3. Companies in the specified region
+    4. Companies without an official website when the social profile has enough evidence of a real operating business
 
     PROFILE TYPES:
     - "company" — Official company page or business profile
@@ -230,14 +288,20 @@ export async function discoverLeadsFromSocial(
 
     Return a JSON object with a "profiles" array. Each profile object must have these keys:
     - companyName: string — the company name as it appears on the profile
-    - platform: "linkedin", "facebook", "instagram", "youtube", "tiktok", "x", or "other"
+    - platform: "linkedin", "facebook", "instagram", "youtube", "tiktok", "x", "whatsapp", "maps", or "other"
     - url: full profile URL
+    - country: country or service area
+    - city: city if visible
+    - sourceQuery: the social-first search query that produced the candidate
     - handle: username or handle (if visible)
     - isOfficialLikely: boolean — true if this appears to be the official company profile
     - profileType: "company", "employee", "founder", "reseller", "community", or "unknown"
     - activityLevel: "HIGH", "MEDIUM", "LOW", or "UNKNOWN"
     - activityEvidence: short description of what activity is visible
     - contactHints: array of strings — any contact info visible (email, phone, WhatsApp, website)
+    - productFitSignals: array of strings — product, service, stock, installer, contractor, distributor, retailer, importer, or application fit signals
+    - verificationSignals: array of strings — maps match, website/cross-profile match, address, repeated phone, reviews, recent posts
+    - badFitSignals: array of strings — personal profile, abandoned page, no location, community/group only, wrong country, weak product fit
     - relevanceNotes: why this company is a good (or bad) match for the product
     - confidence: number 0-1
     - employeeCount: string — rough size indication if visible (e.g., "10-50", "50-200")
@@ -272,7 +336,7 @@ export async function discoverLeadsFromSocial(
 
     return parsed.profiles.map((p: any) => ({
       id: uuidv4(),
-      sourceType: (p.platform as EvidenceSourceType) || 'other',
+      sourceType: normalizePlatform(p.platform) as EvidenceSourceType,
       url: p.url || '',
       title: p.companyName || `${productName} lead`,
       snippet: p.relevanceNotes,
@@ -280,18 +344,28 @@ export async function discoverLeadsFromSocial(
       foundAt: now,
       foundBy: 'socialDiscovery',
       validationStatus: 'UNVERIFIED' as const,
-      platform: p.platform || 'other',
+      platform: normalizePlatform(p.platform),
       handle: p.handle,
+      companyName: p.companyName,
+      country: p.country || region,
+      city: p.city,
+      sourceQuery: p.sourceQuery,
       isOfficialLikely: Boolean(p.isOfficialLikely),
       profileType: (p.profileType as SocialProfileType) || 'unknown',
-      activityLevel: (p.activityLevel as SocialActivityLevel) || 'UNKNOWN',
+      activityLevel: normalizeActivity(p.activityLevel),
       activityEvidence: p.activityEvidence,
       contactHints: Array.isArray(p.contactHints) ? p.contactHints : [],
+      productFitSignals: Array.isArray(p.productFitSignals) ? p.productFitSignals : [],
+      verificationSignals: Array.isArray(p.verificationSignals) ? p.verificationSignals : [],
+      badFitSignals: Array.isArray(p.badFitSignals) ? p.badFitSignals : [],
       relevanceNotes: p.relevanceNotes,
       extractedFields: {
         companyName: p.companyName || '',
         website: p.website || '',
         region: region,
+        country: p.country || region,
+        city: p.city || '',
+        sourceQuery: p.sourceQuery || '',
         employeeCount: p.employeeCount || '',
       },
     }));

@@ -9,6 +9,7 @@ export type {
   SocialProfileType,
   SocialActivityLevel,
   SocialProfileEvidence,
+  LeadSocialOrigin,
   VerificationCheckType,
   VerificationCheckStatus,
   VerificationCheck,

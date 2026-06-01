@@ -81,6 +81,30 @@ app.post("/api/ai/search-leads", asyncRoute(async (req, res) => {
   res.json({ leads });
 }));
 
+app.post("/api/ai/classify-product-role", asyncRoute(async (req, res) => {
+  const productRole = await ai.classifyProductRole(req.body.product, req.body.context);
+  res.json({ productRole });
+}));
+
+app.post("/api/ai/application-map", asyncRoute(async (req, res) => {
+  const { product, country, productRole, context, pastMaps, supplierCountry } = req.body;
+  const applicationMap = await ai.generateApplicationMap(
+    product,
+    country,
+    productRole,
+    context,
+    pastMaps,
+    supplierCountry
+  );
+  res.json({ applicationMap });
+}));
+
+app.post("/api/ai/search-application-lane", asyncRoute(async (req, res) => {
+  const { product, application, leadTarget } = req.body;
+  const leads = await ai.searchApplicationLane(product, application, leadTarget);
+  res.json({ leads });
+}));
+
 app.post("/api/ai/verify-lead", asyncRoute(async (req, res) => {
   const result = await ai.verifyLead(req.body.lead, req.body.product);
   res.json({ result });
@@ -102,11 +126,12 @@ app.post("/api/agent/social-discovery/company", asyncRoute(async (req, res) => {
 
 // Phase 3: Social-first lead discovery by region
 app.post("/api/agent/social-discovery/region", asyncRoute(async (req, res) => {
-  const { productName, region, productContext } = req.body;
+  const { productName, region, productContext, applicationContext } = req.body;
   const profiles = await agentSocialDiscovery.discoverLeadsFromSocial(
     productName,
     region,
-    productContext
+    productContext,
+    applicationContext
   );
   const leads = agentSocialToLead.socialProfilesToLeads(profiles, region || "Unknown");
   res.json({ profiles, leads });

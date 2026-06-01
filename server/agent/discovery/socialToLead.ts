@@ -32,6 +32,8 @@ export function socialProfilesToLeads(
                         primary.title ||
                         'Unknown Company';
     const website = (primary.extractedFields?.website as string) || undefined;
+    const sourceQuery = (primary.extractedFields?.sourceQuery as string) || primary.sourceQuery;
+    const city = (primary.extractedFields?.city as string) || primary.city;
 
     // Collect unique platforms for the search vector
     const platforms = [...new Set(companyProfiles.map(p => p.platform))];
@@ -40,6 +42,8 @@ export function socialProfilesToLeads(
     // Extract contact hints from all profiles
     const allContactHints = companyProfiles.flatMap(p => p.contactHints || []);
     const contactInfo = [...new Set(allContactHints)].join(', ') || undefined;
+    const verificationSignals = companyProfiles.flatMap(p => p.verificationSignals || []);
+    const verificationStatus = verificationSignals.length > 0 ? 'partially_verified' : 'unverified';
 
     // Best confidence across all profiles
     const bestConfidence = Math.max(...companyProfiles.map(p => p.confidence));
@@ -59,19 +63,28 @@ export function socialProfilesToLeads(
       status: LeadStatus.DISCOVERED,
       confidenceScore: Math.round(bestConfidence * 100),
       summary: primary.relevanceNotes || primary.snippet,
+      address: city ? `${city}, ${region}` : undefined,
       socialProfiles: companyProfiles.map(p => ({
         platform: p.platform,
         url: p.url,
       })),
       socialDiscovery: companyProfiles,
+      socialOrigin: {
+        originType: 'social-first',
+        primaryProfileUrl: primary.url,
+        primaryPlatform: primary.platform,
+        evidence: companyProfiles,
+        verificationStatus,
+      },
       searchVector: vectorName,
+      searchLane: sourceQuery,
       contactInfo,
       employeeCount: (primary.extractedFields?.employeeCount as string) || undefined,
       lastAgentAction: 'socialDiscovery',
       logs: [{
         timestamp: new Date().toLocaleTimeString(),
         actor: 'SYSTEM',
-        message: `Lead discovered via social media on ${platforms.join(', ')}.\nActivity Level: ${bestActivity}\nPlatforms found: ${companyProfiles.length} profile(s)`,
+        message: `Lead discovered via social-first search on ${platforms.join(', ')}.\nActivity Level: ${bestActivity}\nPlatforms found: ${companyProfiles.length} profile(s)${sourceQuery ? `\nSource query: ${sourceQuery}` : ''}${verificationSignals.length ? `\nVerification signals: ${[...new Set(verificationSignals)].join('; ')}` : ''}`,
       }],
     };
 

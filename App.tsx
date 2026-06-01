@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { searchForLeads, analyzeMarkets, generateMarketReport, extractSearchStrategyFromAssets } from './services/geminiService';
-import { classifyProductRole, generateApplicationMap, searchApplicationLane, allocateLeadBudget } from './services/browserGeminiService';
+import { searchForLeads, analyzeMarkets, generateMarketReport, extractSearchStrategyFromAssets, classifyProductRole, generateApplicationMap, searchApplicationLane, allocateLeadBudget, qualifyLeadsForApplication } from './services/geminiService';
+import { discoverLeadsFromSocial } from './services/agent/socialDiscoveryService';
 import { getSessions, saveSession, deleteSession, getSupplierProfile, saveSupplierProfile } from './services/storageService';
 import { Lead, ProductDetails, AgentAction, RegionSuggestion, LeadStatus, ProductAsset, SearchSession, MarketReport, TargetAudienceType, StrategicContext, SupplierProfile } from './types';
+import { ProductRole, LanePerformanceRecord } from './types/applicationTypes';
 import { CampaignMemory } from './types/agentTypes';
 import { Terminal } from './components/Terminal';
 import { LeadCard } from './components/LeadCard';
@@ -353,13 +354,24 @@ export default function App() {
               const currentSessionFull = sessionsRef.current.find(s => s.id === session.id);
               const sessionMemory = currentSessionFull?.memory;
 
+              // Resolve product role — reuse session, or extract from cached app map
+              let productRole = currentSessionFull?.productRole;
+
               let appMap = sessionMemory?.applicationMapHistory?.find(
                 m => m.country === scoutRegion
               );
 
-              if (!appMap) {
-                addAgentLog(`[Auto-Pilot] Classifying product role for ${session.name}...`);
-                const productRole = await classifyProductRole(productContext, session.strategicContext);
+              if (appMap) {
+                if (!productRole) {
+                  productRole = appMap.productRole;
+                }
+              } else {
+                if (productRole) {
+                  addAgentLog(`[Auto-Pilot] Reusing session product role: ${productRole.role}`);
+                } else {
+                  addAgentLog(`[Auto-Pilot] Classifying product role for ${session.name}...`);
+                  productRole = await classifyProductRole(productContext, session.strategicContext);
+                }
 
                 addAgentLog(`[Auto-Pilot] Generating application map for ${scoutRegion}...`);
                 appMap = await generateApplicationMap(
@@ -370,7 +382,7 @@ export default function App() {
 
                 addAgentLog(`[Auto-Pilot] ${appMap.applications.length} applications identified in ${scoutRegion}`);
 
-                // Save map to memory
+                // Save map to memory and persist product role on session
                 const updatedMemory: CampaignMemory = {
                   ...(sessionMemory || {
                     events: [],
@@ -389,21 +401,104 @@ export default function App() {
                   updatedAt: Date.now()
                 };
 
-                const updatedSessionWithMem = { ...session, memory: updatedMemory };
+                const updatedSessionWithMem = { ...session, memory: updatedMemory, productRole };
                 setSessions(prev => prev.map(s => s.id === session.id ? updatedSessionWithMem : s));
                 if (user) saveSession(user.uid, updatedSessionWithMem);
               }
 
+              // Attach product role to context so searchApplicationLane can target correctly
+              productContext.productRole = productRole;
+
               const budget = allocateLeadBudget(appMap.applications, scoutLeadCount);
 
+              // Refine budget based on past lane performance
+              const pastPerf = sessionMemory?.lanePerformance || {};
+              for (const [appId, perf] of Object.entries(pastPerf)) {
+                if (budget[appId] && perf.totalRuns >= 2 && perf.qualifiedRate < 0.3 && budget[appId] > 1) {
+                  const reduction = Math.min(budget[appId] - 1, Math.floor(budget[appId] * 0.5));
+                  budget[appId] -= reduction;
+                  const bestEntry = Object.entries(pastPerf)
+                    .filter(([id]) => id !== appId && budget[id])
+                    .sort(([, a], [, b]) => b.qualifiedRate - a.qualifiedRate)[0];
+                  if (bestEntry && budget[bestEntry[0]]) {
+                    budget[bestEntry[0]] += reduction;
+                  }
+                }
+              }
+
               const allFoundLeads: Lead[] = [];
+              const lanePerformanceRecords: Record<string, LanePerformanceRecord> = { ...(sessionMemory?.lanePerformance || {}) };
               for (const application of appMap.applications) {
                 const laneBudget = budget[application.id] || 0;
                 if (laneBudget === 0) continue;
 
                 try {
                   const laneLeads = await searchApplicationLane(productContext, application, laneBudget);
-                  allFoundLeads.push(...laneLeads);
+                  const socialNeeded = Math.max(0, laneBudget - laneLeads.length);
+                  if (socialNeeded > 0) {
+                    const socialResult = await discoverLeadsFromSocial(
+                      productContext.name,
+                      scoutRegion,
+                      session.strategicContext,
+                      {
+                        application: application.name,
+                        buyerTypes: application.buyerTypes,
+                        searchTerms: application.socialSearchTerms || application.searchTerms,
+                        qualificationSignals: application.qualificationSignals,
+                        badFitSignals: application.badFitSignals,
+                      }
+                    );
+                    const socialLeads = socialResult.leads.slice(0, socialNeeded).map(lead => ({
+                      ...lead,
+                      applicationId: application.id,
+                      application: application.name,
+                      buyerType: application.buyerTypes[0] || lead.buyerType,
+                      searchLane: lead.searchLane || application.socialSearchTerms?.[0] || application.searchTerms[0],
+                    }));
+                    laneLeads.push(...socialLeads);
+                  }
+
+                  if (laneLeads.length === 0) continue;
+
+                  // Post-discovery qualification
+                  const qualification = await qualifyLeadsForApplication(laneLeads, application, session.name);
+
+                  const qualifiedLeads = laneLeads.filter((_, i) =>
+                    qualification.qualifications[i]?.result === "qualified" || qualification.qualifications[i]?.result === "uncertain"
+                  );
+
+                  for (const lead of qualifiedLeads) {
+                    const q = qualification.qualifications.find(ql => ql.leadId === lead.id);
+                    lead.applicationId = application.id;
+                    lead.application = application.name;
+                    lead.buyerType = lead.buyerType || application.buyerTypes[0];
+                    lead.searchLane = lead.searchLane || application.searchTerms[0];
+                    if (q) {
+                      lead.verificationNotes = `Qualified via application signals: ${q.matchedSignals.join("; ") || "passed screening"}`;
+                    }
+                  }
+
+                  allFoundLeads.push(...qualifiedLeads);
+
+                  // Track lane performance
+                  const qualifiedRate = laneLeads.length > 0 ? qualifiedLeads.length / laneLeads.length : 0;
+                  const avgConf = qualifiedLeads.length > 0
+                    ? qualifiedLeads.reduce((s, l) => s + l.confidenceScore, 0) / qualifiedLeads.length
+                    : 0;
+                  const existingPerf = lanePerformanceRecords[application.id];
+                  lanePerformanceRecords[application.id] = {
+                    applicationId: application.id,
+                    applicationName: application.name,
+                    country: scoutRegion,
+                    qualifiedRate: existingPerf
+                      ? (existingPerf.qualifiedRate * existingPerf.totalRuns + qualifiedRate) / (existingPerf.totalRuns + 1)
+                      : qualifiedRate,
+                    avgConfidence: existingPerf
+                      ? (existingPerf.avgConfidence * existingPerf.totalRuns + avgConf) / (existingPerf.totalRuns + 1)
+                      : avgConf,
+                    lastRunAt: Date.now(),
+                    totalRuns: (existingPerf?.totalRuns || 0) + 1,
+                  };
                 } catch (laneErr) {
                   // Single lane failure — continue with others
                 }
@@ -412,6 +507,22 @@ export default function App() {
               // Apply Deduplication Engine
               const { unique: uniqueNewLeads } = deduplicateLeads(session.leads, allFoundLeads);
 
+              // Always persist lane performance to memory
+              const updatedMemoryWithPerf: CampaignMemory = {
+                ...(sessionMemory || {
+                  events: [],
+                  preferredLeadPatterns: [],
+                  rejectedLeadPatterns: [],
+                  strongRegions: [],
+                  weakRegions: [],
+                  platformUsefulness: {},
+                  buyerTypePerformance: {},
+                  updatedAt: Date.now()
+                }),
+                lanePerformance: lanePerformanceRecords,
+                updatedAt: Date.now()
+              };
+
               if (uniqueNewLeads.length > 0) {
                    const flaggedNewLeads = uniqueNewLeads.map(l => ({ ...l, isNew: true }));
                    const updatedLeads = [...session.leads, ...flaggedNewLeads];
@@ -419,6 +530,7 @@ export default function App() {
                    const updatedSession: SearchSession = {
                        ...session,
                        leads: updatedLeads,
+                       memory: updatedMemoryWithPerf,
                        lastScoutTime: now
                    };
 
@@ -433,8 +545,8 @@ export default function App() {
 
                    addAgentLog(`[Auto-Pilot] ✅ Success! Found ${uniqueNewLeads.length} verified leads in ${scoutRegion} across ${appMap.applications.length} application lanes.`);
               } else {
-                   // Update time only
-                   const updatedSession = { ...session, lastScoutTime: now };
+                   // Update time only, but persist lane performance
+                   const updatedSession = { ...session, memory: updatedMemoryWithPerf, lastScoutTime: now };
                    setSessions(prev => prev.map(s => s.id === session.id ? updatedSession : s));
                    if (user) saveSession(user.uid, updatedSession);
                    addAgentLog(`[Auto-Pilot] Territory saturated. No new verified leads found in ${scoutRegion}.`);
@@ -546,12 +658,12 @@ export default function App() {
       addAgentLog(`Loaded campaign: ${session.name}`);
   };
 
-  const createNewSession = (analysisResults: RegionSuggestion[], activeContext: StrategicContext | null) => {
+  const createNewSession = (analysisResults: RegionSuggestion[], activeContext: StrategicContext | null, productRole?: ProductRole) => {
       const newSession: SearchSession = {
           id: uuidv4(),
           createdAt: Date.now(),
           name: productName || "Untitled Campaign",
-          productDescription: productDescription, 
+          productDescription: productDescription,
           config: {
               continent,
               countries: selectedCountries,
@@ -564,7 +676,9 @@ export default function App() {
           leads: [],
           isAutoPilotEnabled: false,
           // SAVE STRUCTURED MEMORY TO SESSION
-          strategicContext: activeContext || undefined
+          strategicContext: activeContext || undefined,
+          // Persist product role so scout/autopilot can reuse it
+          productRole
       };
       
       setSessions(prev => [newSession, ...prev]);
@@ -593,30 +707,41 @@ export default function App() {
     try {
       // 1. LAZY EXTRACTION: If assets exist but no context, extract now.
       let activeContext: StrategicContext | null = searchContext;
-      
+
       if (!activeContext && productAssets.length > 0) {
           addAgentLog(`Deep scanning ${productAssets.length} document(s) for structured memory extraction...`);
           setAgentAction({ type: 'ANALYZING', details: 'Extracting strategic memory from documents...' });
-          
+
           activeContext = await extractSearchStrategyFromAssets({
               name: productName,
               assets: productAssets
           });
-          
+
           setSearchContext(activeContext); // Save to state for future use
           addAgentLog(`Strategic memory extracted.`);
       }
 
-      setAgentAction({ type: 'ANALYZING', details: 'Analyzing global trade data...' });
+      // 2. CLASSIFY PRODUCT ROLE — understand the product's supply-chain position before analyzing markets
+      setAgentAction({ type: 'ANALYZING', details: 'Classifying product role and supply chain position...' });
+      addAgentLog(`Classifying product role for "${productName}"...`);
+      const productRole = await classifyProductRole(
+        { name: productName, description: productDescription, assets: productAssets, supplierCountry },
+        activeContext || undefined
+      );
+      addAgentLog(`Product role: ${productRole.role} (resold by ${productRole.resellerTypes.join(", ") || "various"}, operated by ${productRole.operatorTypes.join(", ") || "various"})`);
 
-      // 2. ANALYZE MARKETS (Pass the activeContext)
-      // Note: analyzeMarkets expects StrategicContext | undefined
-      const results = withDefaultScoutTargets(await analyzeMarkets(productName, productDescription, continent, selectedCountries, productAssets, activeContext || undefined));
+      setAgentAction({ type: 'ANALYZING', details: 'Analyzing global trade data with product role context...' });
+
+      // 3. ANALYZE MARKETS — informed by product role classification
+      const results = withDefaultScoutTargets(await analyzeMarkets(
+        productName, productDescription, continent, selectedCountries,
+        productAssets, activeContext || undefined, supplierCountry, productRole
+      ));
       setSuggestions(results);
       addAgentLog(`Analysis complete. ${results.length} regions identified.`);
-      
-      // 3. CREATE NEW SESSION (Save the context)
-      createNewSession(results, activeContext);
+
+      // 4. CREATE NEW SESSION (Save the context and product role)
+      createNewSession(results, activeContext, productRole);
       addAgentLog(`Campaign saved to database.`);
 
     } catch (e) {
@@ -713,19 +838,41 @@ export default function App() {
         const currentSession = sessions.find(s => s.id === activeSessionId);
         const sessionMemory = currentSession?.memory;
 
-        // 1. Check for existing application map in campaign memory
+        // 1. Resolve product role — reuse from session, or extract from cached app map, or classify
+        let productRole = currentSession?.productRole;
+
+        // 2. Check for existing application map in campaign memory
         let appMap = sessionMemory?.applicationMapHistory?.find(
           m => m.country === region
         );
 
         if (appMap) {
           addAgentLog(`[App Map] Using cached application map for ${region} (${appMap.applications.length} lanes)`);
+          // Extract product role from cached map if session doesn't have it
+          if (!productRole) {
+            productRole = appMap.productRole;
+          }
         } else {
-          // 2a. Classify product role
-          setAgentAction({ type: 'SEARCHING', details: `Classifying product role for ${region}...` });
-          addAgentLog(`[App Map] Classifying product role for ${productName}...`);
-          const productRole = await classifyProductRole(productContext, searchContext || undefined);
-          addAgentLog(`[App Map] Product role: ${productRole.role}`);
+          if (productRole) {
+            addAgentLog(`[App Map] Reusing session product role: ${productRole.role}`);
+          } else {
+            setAgentAction({ type: 'SEARCHING', details: `Classifying product role for ${region}...` });
+            addAgentLog(`[App Map] Classifying product role for ${productName}...`);
+            productRole = await classifyProductRole(productContext, searchContext || undefined);
+            addAgentLog(`[App Map] Product role: ${productRole.role}`);
+
+            // Persist on session so subsequent scouts and autopilot reuse it
+            setSessions(prev => {
+              const updated = prev.map(s =>
+                s.id === activeSessionId ? { ...s, productRole } : s
+              );
+              if (user && activeSessionId) {
+                const session = updated.find(s => s.id === activeSessionId);
+                if (session) saveSession(user.uid, session);
+              }
+              return updated;
+            });
+          }
 
           // 2b. Generate application map
           setAgentAction({ type: 'SEARCHING', details: `Decomposing applications for ${region}...` });
@@ -775,13 +922,37 @@ export default function App() {
           });
         }
 
-        // 3. Allocate budget across applications
+        // 3. Attach product role to context so searchApplicationLane can target correctly
+        productContext.productRole = productRole;
+
+        // 4. Allocate budget across applications, refined by past performance
         const budget = allocateLeadBudget(appMap.applications, scoutLeadCount);
 
-        // 4. Search each application lane
+        // 4a. Refine budget: reduce for lanes with consistently poor past performance
+        const pastPerf = sessionMemory?.lanePerformance || {};
+        for (const [appId, perf] of Object.entries(pastPerf)) {
+          if (budget[appId] && perf.totalRuns >= 2 && perf.qualifiedRate < 0.3 && budget[appId] > 1) {
+            const reduction = Math.min(budget[appId] - 1, Math.floor(budget[appId] * 0.5));
+            budget[appId] -= reduction;
+            // Redistribute to best-performing lane
+            const bestEntry = Object.entries(pastPerf)
+              .filter(([id]) => id !== appId && budget[id])
+              .sort(([, a], [, b]) => b.qualifiedRate - a.qualifiedRate)[0];
+            if (bestEntry && budget[bestEntry[0]]) {
+              budget[bestEntry[0]] += reduction;
+              addAgentLog(`[App Map] Refined budget: "${perf.applicationName}" reduced by ${reduction} (qual rate: ${(perf.qualifiedRate * 100).toFixed(0)}%) → redistributed to "${bestEntry[1].applicationName}"`);
+            }
+          }
+        }
+
+        // 5. Search each application lane with post-discovery qualification
         setAgentAction({ type: 'SEARCHING', details: `Searching ${appMap.applications.length} application lanes in ${region}...` });
 
         const allFoundLeads: Lead[] = [];
+        const lanePerformanceRecords: Record<string, LanePerformanceRecord> = { ...(sessionMemory?.lanePerformance || {}) };
+        let totalQualified = 0;
+        let totalRejected = 0;
+
         for (const application of appMap.applications) {
           const laneBudget = budget[application.id] || 0;
           if (laneBudget === 0) continue;
@@ -790,21 +961,128 @@ export default function App() {
           addAgentLog(`[${scoutId}] Searching lane: "${laneLabel}" (${laneBudget} leads)...`);
 
           try {
+            // 5a. Discover leads in this lane
             const laneLeads = await searchApplicationLane(productContext, application, laneBudget);
-            allFoundLeads.push(...laneLeads);
-            addAgentLog(`[${scoutId}] Lane complete: ${laneLeads.length} leads found`);
+            const socialNeeded = Math.max(0, laneBudget - laneLeads.length);
+            let socialLeadCount = 0;
+            if (socialNeeded > 0) {
+              const socialResult = await discoverLeadsFromSocial(
+                productContext.name,
+                region,
+                searchContext || undefined,
+                {
+                  application: application.name,
+                  buyerTypes: application.buyerTypes,
+                  searchTerms: application.socialSearchTerms || application.searchTerms,
+                  qualificationSignals: application.qualificationSignals,
+                  badFitSignals: application.badFitSignals,
+                }
+              );
+              const contextualSocialLeads = socialResult.leads.slice(0, socialNeeded).map(lead => ({
+                ...lead,
+                applicationId: application.id,
+                application: application.name,
+                buyerType: application.buyerTypes[0] || lead.buyerType,
+                searchLane: lead.searchLane || application.socialSearchTerms?.[0] || application.searchTerms[0],
+              }));
+              socialLeadCount = contextualSocialLeads.length;
+              laneLeads.push(...contextualSocialLeads);
+            }
+
+            if (laneLeads.length === 0) {
+              addAgentLog(`[${scoutId}] Lane empty — no leads found.`);
+              continue;
+            }
+
+            // 5b. Post-discovery qualification — cross-check against application signals
+            addAgentLog(`[${scoutId}] Qualifying ${laneLeads.length} leads against "${application.name}" signals...`);
+            const qualification = await qualifyLeadsForApplication(laneLeads, application, productName);
+
+            const qualifiedLeads = laneLeads.filter((_, i) =>
+              qualification.qualifications[i]?.result === "qualified" || qualification.qualifications[i]?.result === "uncertain"
+            );
+            const rejectedCount = qualification.rejected;
+
+            // Tag qualified leads with application context
+            for (const lead of qualifiedLeads) {
+              const q = qualification.qualifications.find(ql => ql.leadId === lead.id);
+              lead.applicationId = application.id;
+              lead.application = application.name;
+              lead.buyerType = lead.buyerType || application.buyerTypes[0];
+              lead.searchLane = lead.searchLane || application.searchTerms[0];
+              if (q) {
+                lead.verificationNotes = `Qualified via application signals: ${q.matchedSignals.join("; ") || "passed screening"}`;
+              }
+            }
+
+            allFoundLeads.push(...qualifiedLeads);
+            totalQualified += qualifiedLeads.length;
+            totalRejected += rejectedCount;
+
+            // 5c. Track lane performance for future refinement
+            const qualifiedRate = laneLeads.length > 0 ? qualifiedLeads.length / laneLeads.length : 0;
+            const avgConf = qualifiedLeads.length > 0
+              ? qualifiedLeads.reduce((s, l) => s + l.confidenceScore, 0) / qualifiedLeads.length
+              : 0;
+
+            const existingPerf = lanePerformanceRecords[application.id];
+            lanePerformanceRecords[application.id] = {
+              applicationId: application.id,
+              applicationName: application.name,
+              country: region,
+              qualifiedRate: existingPerf
+                ? (existingPerf.qualifiedRate * existingPerf.totalRuns + qualifiedRate) / (existingPerf.totalRuns + 1)
+                : qualifiedRate,
+              avgConfidence: existingPerf
+                ? (existingPerf.avgConfidence * existingPerf.totalRuns + avgConf) / (existingPerf.totalRuns + 1)
+                : avgConf,
+              lastRunAt: Date.now(),
+              totalRuns: (existingPerf?.totalRuns || 0) + 1,
+            };
+
+            const rejectedNote = rejectedCount > 0 ? ` (${rejectedCount} rejected by qualification)` : "";
+            addAgentLog(`[${scoutId}] Lane complete: ${qualifiedLeads.length} qualified${rejectedNote}, ${socialLeadCount} social-first leads found`);
           } catch (laneErr) {
             addAgentLog(`[${scoutId}] Lane failed: ${laneErr}. Continuing with remaining lanes.`);
           }
         }
 
-        // 5. Deduplicate across all lanes
+        // 5d. Log qualification summary
+        addAgentLog(`[${scoutId}] Qualification complete: ${totalQualified} qualified, ${totalRejected} rejected across ${appMap.applications.length} lanes`);
+
+        // 5e. Deduplicate across all lanes
         const currentLeads = leadsRef.current;
         const { unique: newLeads, duplicates } = deduplicateLeads(currentLeads, allFoundLeads);
 
         const leadsWithContext = [...currentLeads, ...newLeads];
         setLeads(leadsWithContext);
         updateActiveSession(leadsWithContext);
+
+        // 5f. Save lane performance to campaign memory for future refinement
+        const performanceMemory: CampaignMemory = {
+          ...(sessionMemory || {
+            events: [],
+            preferredLeadPatterns: [],
+            rejectedLeadPatterns: [],
+            strongRegions: [],
+            weakRegions: [],
+            platformUsefulness: {},
+            buyerTypePerformance: {},
+            updatedAt: Date.now()
+          }),
+          lanePerformance: lanePerformanceRecords,
+          updatedAt: Date.now()
+        };
+        setSessions(prev => {
+          const updated = prev.map(s =>
+            s.id === activeSessionId ? { ...s, memory: performanceMemory } : s
+          );
+          if (user && activeSessionId) {
+            const session = updated.find(s => s.id === activeSessionId);
+            if (session) saveSession(user.uid, session);
+          }
+          return updated;
+        });
 
         addAgentLog(`[${scoutId}] Discovery complete. ${newLeads.length} new leads across ${appMap.applications.length} application lanes${duplicates > 0 ? ` (${duplicates} duplicates skipped)` : ''}.`);
 

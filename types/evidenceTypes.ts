@@ -10,6 +10,7 @@ export type EvidenceSourceType =
   | 'youtube'
   | 'tiktok'
   | 'x'
+  | 'whatsapp'
   | 'directory'
   | 'company_registry'
   | 'user_provided';
@@ -29,7 +30,7 @@ export interface DiscoveryEvidence {
   validationStatus: ValidationStatus;
 }
 
-export type SocialPlatform = 'linkedin' | 'facebook' | 'instagram' | 'youtube' | 'tiktok' | 'x' | 'other';
+export type SocialPlatform = 'linkedin' | 'facebook' | 'instagram' | 'youtube' | 'tiktok' | 'x' | 'whatsapp' | 'maps' | 'other';
 
 export type SocialProfileType = 'company' | 'employee' | 'founder' | 'reseller' | 'community' | 'unknown';
 
@@ -38,12 +39,27 @@ export type SocialActivityLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
 export interface SocialProfileEvidence extends DiscoveryEvidence {
   platform: SocialPlatform;
   handle?: string;
+  companyName?: string;
+  country?: string;
+  city?: string;
+  sourceQuery?: string;
   isOfficialLikely: boolean;
   profileType: SocialProfileType;
   activityLevel: SocialActivityLevel;
   activityEvidence?: string;
   contactHints?: string[];
+  productFitSignals?: string[];
+  verificationSignals?: string[];
+  badFitSignals?: string[];
   relevanceNotes?: string;
+}
+
+export interface LeadSocialOrigin {
+  originType: 'social-first';
+  primaryProfileUrl: string;
+  primaryPlatform: SocialPlatform;
+  evidence: SocialProfileEvidence[];
+  verificationStatus: 'unverified' | 'partially_verified' | 'verified' | 'rejected';
 }
 
 export type VerificationCheckType =

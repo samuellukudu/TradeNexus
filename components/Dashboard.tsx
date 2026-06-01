@@ -93,6 +93,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
         "Est. Employees", 
         "Trade Volume",
         "Manufacturing Capacity",
+        "Lead Origin",
+        "Social Verification",
         "Primary Social Link"
       ];
 
@@ -143,6 +145,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
           lead.employeeCount || "",
           lead.tradeVolume || "",
           lead.manufacturingVolume || "",
+          lead.socialOrigin?.originType === 'social-first' ? 'Social-first' : 'Standard discovery',
+          lead.socialOrigin?.verificationStatus || "",
           socialCell
         ];
       });

@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { searchForLeads, analyzeMarkets, generateMarketReport, extractSearchStrategyFromAssets } from './services/geminiService';
+import { classifyProductRole, generateApplicationMap, searchApplicationLane, allocateLeadBudget } from './services/browserGeminiService';
 import { getSessions, saveSession, deleteSession, getSupplierProfile, saveSupplierProfile } from './services/storageService';
 import { Lead, ProductDetails, AgentAction, RegionSuggestion, LeadStatus, ProductAsset, SearchSession, MarketReport, TargetAudienceType, StrategicContext, SupplierProfile } from './types';
+import { CampaignMemory } from './types/agentTypes';
 import { Terminal } from './components/Terminal';
 import { LeadCard } from './components/LeadCard';
 import { InteractionViewer } from './components/InteractionViewer';
@@ -632,13 +634,10 @@ export default function App() {
     setDeployedRegions(prev => new Set(prev).add(region));
     const scoutId = `Scout-${region.substring(0,3).toUpperCase()}`;
     addAgentLog(`[${scoutId}] Deploying to ${region}...`);
-    
-    // Auto-open leads panel on mobile to show results
+
     if (window.innerWidth < 768) {
       setIsLeadsPanelOpen(true);
     }
-
-    // Optimization: We rely on `searchContext` which was computed at analysis time.
 
     const productContext: ProductDetails = {
         name: productName,
@@ -646,43 +645,132 @@ export default function App() {
         targetRegion: region,
         targetCompanySize: targetCompanySize,
         targetLeadCount: scoutLeadCount,
-        targetAudience: targetAudience, // Pass Audience
+        targetAudience: targetAudience,
         supplierCountry: supplierCountry,
-        // We do NOT pass 'assets' here, to prevent re-upload.
-        // We pass the extracted text context instead.
         strategicContext: searchContext || undefined
     };
 
     try {
-        setAgentAction({ type: 'SEARCHING', details: `Scouting ${region} for ${scoutLeadCount} verified candidates...` });
-        
-        // 1. Search (Note: searchForLeads internally splits this into 4 territory squads)
-        const foundLeads = await searchForLeads(productContext);
+        // --- APPLICATION-LED DISCOVERY PIPELINE ---
 
-        // 2. Deduplicate using leadsRef to avoid stale closure state
+        const currentSession = sessions.find(s => s.id === activeSessionId);
+        const sessionMemory = currentSession?.memory;
+
+        // 1. Check for existing application map in campaign memory
+        let appMap = sessionMemory?.applicationMapHistory?.find(
+          m => m.country === region
+        );
+
+        if (appMap) {
+          addAgentLog(`[App Map] Using cached application map for ${region} (${appMap.applications.length} lanes)`);
+        } else {
+          // 2a. Classify product role
+          setAgentAction({ type: 'SEARCHING', details: `Classifying product role for ${region}...` });
+          addAgentLog(`[App Map] Classifying product role for ${productName}...`);
+          const productRole = await classifyProductRole(productContext, searchContext || undefined);
+          addAgentLog(`[App Map] Product role: ${productRole.role}`);
+
+          // 2b. Generate application map
+          setAgentAction({ type: 'SEARCHING', details: `Decomposing applications for ${region}...` });
+          addAgentLog(`[App Map] Generating application map for ${region}...`);
+          const pastMaps = sessionMemory?.applicationMapHistory || [];
+          appMap = await generateApplicationMap(
+            productContext, region, productRole,
+            searchContext || undefined, pastMaps, supplierCountry
+          );
+
+          // 2c. Log the applications found
+          addAgentLog(`[App Map] ${appMap.applications.length} applications identified:`);
+          const totalScore = appMap.applications.reduce((s, a) => s + a.priorityScore, 0) || 1;
+          for (const app of appMap.applications) {
+            const laneBudget = Math.max(1, Math.floor((scoutLeadCount * app.priorityScore) / totalScore));
+            addAgentLog(`[App Map]   ${appMap.applications.indexOf(app) + 1}. ${app.name} (score: ${app.priorityScore.toFixed(2)}) → ~${laneBudget} leads`);
+          }
+
+          // 2d. Save application map to campaign memory
+          const updatedMemory: CampaignMemory = {
+            ...(sessionMemory || {
+              events: [],
+              preferredLeadPatterns: [],
+              rejectedLeadPatterns: [],
+              strongRegions: [],
+              weakRegions: [],
+              platformUsefulness: {},
+              buyerTypePerformance: {},
+              updatedAt: Date.now()
+            }),
+            applicationMapHistory: [
+              ...(sessionMemory?.applicationMapHistory || []).slice(-19),
+              appMap
+            ],
+            updatedAt: Date.now()
+          };
+
+          setSessions(prev => {
+            const updated = prev.map(s =>
+              s.id === activeSessionId ? { ...s, memory: updatedMemory } : s
+            );
+            if (user && activeSessionId) {
+              const session = updated.find(s => s.id === activeSessionId);
+              if (session) saveSession(user.uid, session);
+            }
+            return updated;
+          });
+        }
+
+        // 3. Allocate budget across applications
+        const budget = allocateLeadBudget(appMap.applications, scoutLeadCount);
+
+        // 4. Search each application lane
+        setAgentAction({ type: 'SEARCHING', details: `Searching ${appMap.applications.length} application lanes in ${region}...` });
+
+        const allFoundLeads: Lead[] = [];
+        for (const application of appMap.applications) {
+          const laneBudget = budget[application.id] || 0;
+          if (laneBudget === 0) continue;
+
+          const laneLabel = application.searchTerms[0] || application.name;
+          addAgentLog(`[${scoutId}] Searching lane: "${laneLabel}" (${laneBudget} leads)...`);
+
+          try {
+            const laneLeads = await searchApplicationLane(productContext, application, laneBudget);
+            allFoundLeads.push(...laneLeads);
+            addAgentLog(`[${scoutId}] Lane complete: ${laneLeads.length} leads found`);
+          } catch (laneErr) {
+            addAgentLog(`[${scoutId}] Lane failed: ${laneErr}. Continuing with remaining lanes.`);
+          }
+        }
+
+        // 5. Deduplicate across all lanes
         const currentLeads = leadsRef.current;
-        const { unique: newLeads, duplicates } = deduplicateLeads(currentLeads, foundLeads);
-        
-        // UPDATE STATE & DB (Atomic)
+        const { unique: newLeads, duplicates } = deduplicateLeads(currentLeads, allFoundLeads);
+
         const leadsWithContext = [...currentLeads, ...newLeads];
         setLeads(leadsWithContext);
         updateActiveSession(leadsWithContext);
 
-        if (duplicates > 0) {
-            addAgentLog(`[${scoutId}] Found ${foundLeads.length} candidates. Merged ${duplicates} duplicates.`);
-        } else {
-            addAgentLog(`[${scoutId}] Found ${newLeads.length} new matches.`);
-        }
+        addAgentLog(`[${scoutId}] Discovery complete. ${newLeads.length} new leads across ${appMap.applications.length} application lanes${duplicates > 0 ? ` (${duplicates} duplicates skipped)` : ''}.`);
 
         if (newLeads.length === 0) {
             setAgentAction({ type: 'IDLE', details: 'No new leads found.' });
             return;
         }
 
-        addAgentLog(`[${scoutId}] Discovery complete.`);
-
     } catch (e) {
-        addAgentLog(`[${scoutId}] Error: ${e}`);
+        addAgentLog(`[${scoutId}] Application-led discovery failed: ${e}. Falling back to direct search...`);
+        // Fall back to existing direct search
+        try {
+          setAgentAction({ type: 'SEARCHING', details: `Scouting ${region} via direct search...` });
+          const foundLeads = await searchForLeads(productContext);
+          const currentLeads = leadsRef.current;
+          const { unique: newLeads, duplicates } = deduplicateLeads(currentLeads, foundLeads);
+          const leadsWithContext = [...currentLeads, ...newLeads];
+          setLeads(leadsWithContext);
+          updateActiveSession(leadsWithContext);
+          addAgentLog(`[${scoutId}] Fallback search complete: ${newLeads.length} leads found${duplicates > 0 ? ` (${duplicates} duplicates)` : ''}.`);
+        } catch (fallbackErr) {
+          addAgentLog(`[${scoutId}] Fallback search also failed: ${fallbackErr}`);
+        }
     } finally {
         setAgentAction({ type: 'IDLE', details: 'Awaiting orders.' });
     }

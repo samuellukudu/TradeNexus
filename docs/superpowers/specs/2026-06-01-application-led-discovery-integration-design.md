@@ -9,10 +9,17 @@
 
 Integrate the Application-Led Discovery workflow into the existing browser-based Gemini service layer (`browserGeminiService.ts`). The agent will decompose a supplier's exact product into country-specific applications before searching for companies, then search each application lane proportionally by priority. The application map is an internal agent reasoning artifact surfaced through terminal logs — no new user-facing UI components.
 
+### Shift from Distributor-First to Application-First
+
+The current `searchForLeads` targets middlemen: "B2B buyer, importer, distributor, OEM." This works for finding resellers but misses the much larger pool of end users whose operations reveal demand — a quarry operator needs excavators, a flower farm needs solar irrigation, a hotel needs water filtration. These companies rarely advertise procurement intent directly, but their operational profile makes them buyers.
+
+The application-led pipeline flips the search: instead of asking "who imports X," it asks "who operates facilities that need X, and why." The agent reasons backward from usage — then finds the companies operating in those usage contexts. Distributors and importers still appear when relevant, but they are no longer the primary target. The buyer type is determined by the application, not assumed upfront.
+
 ## Key Decisions
 
 | Decision | Choice |
 |----------|--------|
+| Search philosophy | Application-first: find end users by what they operate, not what they import |
 | Integration point | After market analysis, before scout deployment |
 | User editability | None — internal agent workflow |
 | Lane search strategy | All lanes, proportional budget |
@@ -94,7 +101,9 @@ applicationMapHistory?: CountryApplicationMap[];
 
 **`searchApplicationLane(product, application, leadTarget) → Lead[]`**
 - Uses Google Search grounding
-- Searches for companies within a single application lane using `application.searchTerms`
+- Searches for **operational end users** within a single application lane — farms, hotels, hospitals, factories, mines, construction firms, municipalities, etc. — rather than distributors or importers
+- Uses `application.searchTerms`, `application.qualificationSignals`, and `application.badFitSignals` to target the right company profiles
+- The buyer type is determined by the application (e.g., "horticulture exporter" for irrigation farms), not assumed to be a distributor
 - Returns leads tagged with `applicationId`, `application`, `buyerType`, and `searchLane`
 
 ### Helper

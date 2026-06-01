@@ -150,6 +150,10 @@ export interface Lead {
   tradeVolume?: string;
   manufacturingVolume?: string;
   nextSteps?: string;
+  applicationId?: string;
+  application?: string;
+  buyerType?: string;
+  searchLane?: string;
   competitors?: Competitor[];
   verificationStatus?: 'UNVERIFIED' | 'VERIFYING' | 'VERIFIED' | 'FAILED';
   verificationNotes?: string;

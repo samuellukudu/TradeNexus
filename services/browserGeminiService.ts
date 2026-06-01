@@ -607,3 +607,128 @@ export const generateApplicationMap = async (
     generatedAt: Date.now()
   };
 };
+
+export const allocateLeadBudget = (
+  applications: ProductApplication[],
+  totalBudget: number
+): Record<string, number> => {
+  const budget: Record<string, number> = {};
+  const totalScore = applications.reduce((sum, a) => sum + a.priorityScore, 0);
+  if (totalScore === 0 || applications.length === 0) return budget;
+
+  const minPerLane = totalBudget >= applications.length ? 1 : 0;
+  let remaining = totalBudget;
+
+  const fracs: { id: string; frac: number }[] = [];
+  for (const app of applications) {
+    const raw = (totalBudget * app.priorityScore) / totalScore;
+    const alloc = Math.max(minPerLane, Math.floor(raw));
+    budget[app.id] = alloc;
+    remaining -= alloc;
+    fracs.push({ id: app.id, frac: raw - alloc });
+  }
+
+  fracs.sort((a, b) => b.frac - a.frac);
+  for (const { id } of fracs) {
+    if (remaining <= 0) break;
+    budget[id]++;
+    remaining--;
+  }
+
+  return budget;
+};
+
+export const searchApplicationLane = async (
+  product: ProductDetails,
+  application: ProductApplication,
+  leadTarget: number
+): Promise<Lead[]> => {
+  const ai = getAiClient();
+  const response = await ai.models.generateContent({
+    model: GROUNDING_MODEL,
+    contents: {
+      parts: [{
+        text: `
+          You are finding OPERATIONAL END USERS for a B2B product. Do NOT search for distributors, importers, or resellers.
+
+          Product: ${product.name}
+          Description: ${product.description || product.name}
+          Supplier country: ${product.supplierCountry || "China"}
+
+          Application context:
+          - Application: ${application.name}
+          - Why relevant: ${application.whyRelevant}
+          - Buyer types to find: ${application.buyerTypes.join(", ")}
+          - Qualification signals: ${application.qualificationSignals.join("; ")}
+          - Bad-fit signals (avoid these): ${application.badFitSignals.join("; ")}
+          - Decision makers to note: ${application.decisionMakers.join(", ")}
+
+          Search for up to ${leadTarget} real companies in ${application.country} that OPERATE in this application context.
+          Use these search queries: ${application.searchTerms.join(" | ")}
+
+          Return only a JSON array. Each item:
+          {
+            "companyName": "...",
+            "website": "...",
+            "reason": "why this company fits the application",
+            "confidenceScore": 85,
+            "sourceUrl": "...",
+            "googleMapsUrl": "...",
+            "country": "${application.country}",
+            "socialProfiles": [],
+            "employeeCount": "...",
+            "revenue": "...",
+            "contactEmail": "...",
+            "phoneNumber": "...",
+            "address": "...",
+            "tradeVolume": "...",
+            "matchDetails": { "industryFit": "...", "sizeFit": "...", "locationFit": "..." },
+            "competitors": []
+          }
+        `
+      }]
+    },
+    config: {
+      ...buildThinkingConfig(GROUNDING_MODEL),
+      tools: [{ googleSearch: {} }]
+    }
+  });
+
+  const parsed = extractJsonFromText(response.text);
+  const rawLeads = Array.isArray(parsed) ? parsed : [];
+  const groundingSources = (response.candidates?.[0]?.groundingMetadata?.groundingChunks || [])
+    .map((chunk: any) => chunk.web?.uri)
+    .filter(Boolean);
+
+  return rawLeads.map((lead: any) => ({
+    id: uuidv4(),
+    companyName: lead.companyName || "Unknown Company",
+    website: lead.website && String(lead.website).toLowerCase() !== "n/a" ? lead.website : undefined,
+    region: application.country,
+    status: LeadStatus.DISCOVERED,
+    confidenceScore: normalizeScore(lead.confidenceScore),
+    matchDetails: lead.matchDetails,
+    summary: lead.reason || `Potential ${application.buyerTypes[0] || "end user"} match via application-led discovery.`,
+    socialProfiles: Array.isArray(lead.socialProfiles) ? lead.socialProfiles : [],
+    employeeCount: lead.employeeCount,
+    revenue: lead.revenue,
+    contactEmail: lead.contactEmail,
+    phoneNumber: lead.phoneNumber,
+    address: lead.address,
+    sourceUrl: lead.sourceUrl,
+    googleMapsUrl: lead.googleMapsUrl,
+    tradeVolume: lead.tradeVolume,
+    competitors: Array.isArray(lead.competitors) ? lead.competitors : [],
+    // Application context tagging
+    applicationId: application.id,
+    application: application.name,
+    buyerType: application.buyerTypes[0] || undefined,
+    searchLane: application.searchTerms[0] || undefined,
+    sources: groundingSources,
+    logs: [{
+      timestamp: new Date().toLocaleTimeString(),
+      actor: "SYSTEM",
+      message: `Lead discovered via application lane: ${application.name}.${lead.googleMapsUrl ? `\nLocation: ${lead.googleMapsUrl}` : ""}`
+    }]
+  }));
+};

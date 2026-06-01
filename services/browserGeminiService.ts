@@ -10,6 +10,7 @@ import {
   RegionSuggestion,
   StrategicContext
 } from "../types";
+import { ProductRole, ProductApplication, CountryApplicationMap } from "../types/applicationTypes";
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 const DEFAULT_MODEL = (import.meta.env.VITE_GEMINI_DEFAULT_MODEL as string | undefined) || "gemini-2.5-flash";
@@ -416,4 +417,63 @@ const normalizeScore = (score: unknown) => {
   if (typeof score !== "number") return 85;
   if (score > 0 && score <= 1) return Math.round(score * 100);
   return Math.max(0, Math.min(100, Math.round(score)));
+};
+
+export const classifyProductRole = async (
+  product: ProductDetails,
+  context?: StrategicContext
+): Promise<ProductRole> => {
+  const ai = getAiClient();
+  const response = await ai.models.generateContent({
+    model: DEFAULT_MODEL,
+    contents: {
+      parts: [{
+        text: `
+          You are an industrial product classifier for B2B trade.
+          Classify this product's role in the supply chain and identify the ecosystem around it.
+
+          Product: ${product.name}
+          Description: ${product.description || product.name}
+          Supplier country: ${product.supplierCountry || "unknown"}
+          ${context ? `Strategic context: ${JSON.stringify(context)}` : ""}
+
+          Return only valid JSON:
+          {
+            "role": "<one of: finished system, machine or equipment, component, consumable, raw material, spare part, installation or service, software-enabled system>",
+            "resellerTypes": ["who resells this product"],
+            "installerTypes": ["who installs it"],
+            "operatorTypes": ["who operates/uses it"],
+            "maintainerTypes": ["who maintains/services it"],
+            "financierTypes": ["who finances purchases of it"]
+          }
+        `
+      }]
+    },
+    config: {
+      ...buildThinkingConfig(DEFAULT_MODEL),
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          role: { type: Type.STRING },
+          resellerTypes: { type: Type.ARRAY, items: { type: Type.STRING } },
+          installerTypes: { type: Type.ARRAY, items: { type: Type.STRING } },
+          operatorTypes: { type: Type.ARRAY, items: { type: Type.STRING } },
+          maintainerTypes: { type: Type.ARRAY, items: { type: Type.STRING } },
+          financierTypes: { type: Type.ARRAY, items: { type: Type.STRING } }
+        },
+        required: ["role"]
+      }
+    }
+  });
+
+  const parsed = extractJsonFromText(response.text) || {};
+  return {
+    role: parsed.role || "machine or equipment",
+    resellerTypes: Array.isArray(parsed.resellerTypes) ? parsed.resellerTypes : [],
+    installerTypes: Array.isArray(parsed.installerTypes) ? parsed.installerTypes : [],
+    operatorTypes: Array.isArray(parsed.operatorTypes) ? parsed.operatorTypes : [],
+    maintainerTypes: Array.isArray(parsed.maintainerTypes) ? parsed.maintainerTypes : [],
+    financierTypes: Array.isArray(parsed.financierTypes) ? parsed.financierTypes : []
+  };
 };

@@ -167,7 +167,11 @@ export const generateProspectingMessage = async (
         Summary: ${lead.summary || "N/A"}
         Product: ${context.productIdentity}
         Value proposition: ${context.valueProposition}
+        ${lead.application ? `Application: ${lead.application}` : ""}
+        ${lead.buyerType ? `Buyer type: ${lead.buyerType}` : ""}
+        ${lead.searchLane ? `Discovered via: ${lead.searchLane}` : ""}
         Keep responses concise, professional, specific, and actionable.
+        ${lead.application ? `Tailor the outreach to the lead's application context (${lead.application}). Focus on operational pain points relevant to their industry, not generic product features.` : ""}
       `,
       tools: [{ googleSearch: {} }]
     }

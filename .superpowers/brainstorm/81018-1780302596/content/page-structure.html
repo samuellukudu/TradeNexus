@@ -1,0 +1,114 @@
+<h2>Page Structure & Video Placement</h2>
+<p class="subtitle">We have rendered demo videos of the TradeNexus UI in action. Where should they live?</p>
+
+<div class="section">
+  <h3>Option A: Video as Hero Background</h3>
+  <div class="mockup">
+    <div class="mockup-header">Full-viewport hero with muted autoplay video behind text</div>
+    <div class="mockup-body" style="background:#020617;padding:60px 40px;text-align:center;position:relative;overflow:hidden;">
+      <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(2,6,23,0.85),rgba(2,6,23,0.6));z-index:1;"></div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:0;">
+        <div style="width:80%;height:70%;background:#0f172a;border:1px solid #1e293b;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#475569;font-size:14px;">🎬 Demo Video Playing (muted, autoplay)</div>
+      </div>
+      <div style="position:relative;z-index:2;">
+        <h1 style="font-size:56px;font-weight:900;color:white;margin:0 0 16px;">AI Agents That Find Buyers<br>While You Sleep</h1>
+        <p style="color:#94a3b8;font-size:18px;max-width:600px;margin:0 auto 32px;">Autonomously scout 190+ countries, verify companies, and fill your pipeline 24/7.</p>
+        <button style="background:#2563eb;color:white;border:none;padding:16px 36px;border-radius:12px;font-weight:700;font-size:16px;">Start Scouting Now →</button>
+      </div>
+    </div>
+  </div>
+  <div class="pros-cons" style="margin-top:16px;">
+    <div class="pros"><h4>Pros</h4><ul><li>Immediately shows real product</li><li>High visual impact</li><li>"Show don't tell"</li></ul></div>
+    <div class="cons"><h4>Cons</h4><ul><li>Large file size / load time</li><li>Text readability over video</li><li>Mobile data concerns</li></ul></div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Option B: Screenshots in Hero, Video Below</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Hero: Text + UI Screenshot</div>
+      <div class="mockup-body" style="background:#020617;padding:40px 30px;">
+        <div style="display:flex;gap:30px;align-items:center;">
+          <div style="flex:1;">
+            <h2 style="font-size:36px;font-weight:900;color:white;margin:0 0 12px;">AI That Finds Your Next Buyer</h2>
+            <p style="color:#94a3b8;font-size:14px;margin:0 0 20px;">Autonomous agents scout global markets, verify leads, and build your pipeline 24/7.</p>
+            <button style="background:#2563eb;color:white;border:none;padding:12px 24px;border-radius:10px;font-weight:700;">Get Started →</button>
+          </div>
+          <div style="flex:1;background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:20px;min-height:180px;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:8px;">📋 Lead Dashboard Preview</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="background:#1e293b;border-radius:6px;padding:8px;font-size:11px;color:#e2e8f0;">🏗️ Sydney Machinery Hire — 95% match</div>
+              <div style="background:#1e293b;border-radius:6px;padding:8px;font-size:11px;color:#e2e8f0;">🔧 SPM Hire — 95% match</div>
+              <div style="background:#1e293b;border-radius:6px;padding:8px;font-size:11px;color:#e2e8f0;">⚡ Desert Technologies — 85% match</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">Below: Dedicated Video Section</div>
+      <div class="mockup-body" style="background:#0f172a;padding:40px;text-align:center;">
+        <h3 style="color:white;margin:0 0 8px;">See TradeNexus in Action</h3>
+        <p style="color:#94a3b8;font-size:13px;margin:0 0 20px;">Watch how AI agents discover and verify leads in real-time</p>
+        <div style="background:#020617;border:1px solid #1e293b;border-radius:12px;height:200px;display:flex;align-items:center;justify-content:center;color:#475569;">▶️ Embedded Video Player</div>
+      </div>
+    </div>
+  </div>
+  <div class="pros-cons" style="margin-top:16px;">
+    <div class="pros"><h4>Pros</h4><ul><li>Faster page load</li><li>Clear separation of content</li><li>Better mobile experience</li></ul></div>
+    <div class="cons"><h4>Cons</h4><ul><li>Less dramatic impact</li><li>Video may get less views</li></ul></div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Option C: Animated UI Mockup (No Video File)</h3>
+  <p class="subtitle">Use CSS/GSAP animations to simulate the product UI — no video file needed</p>
+  <div class="mockup">
+    <div class="mockup-body" style="background:#020617;padding:40px;text-align:center;">
+      <div style="display:flex;gap:16px;justify-content:center;">
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:24px;width:200px;text-align:center;">
+          <div style="font-size:28px;margin-bottom:8px;">🌍</div>
+          <div style="color:#e2e8f0;font-weight:700;font-size:14px;">Select Market</div>
+          <div style="color:#64748b;font-size:11px;">190+ countries</div>
+        </div>
+        <div style="color:#475569;display:flex;align-items:center;">→</div>
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:24px;width:200px;text-align:center;">
+          <div style="font-size:28px;margin-bottom:8px;">🤖</div>
+          <div style="color:#e2e8f0;font-weight:700;font-size:14px;">AI Scouts</div>
+          <div style="color:#64748b;font-size:11px;">Autonomous search</div>
+        </div>
+        <div style="color:#475569;display:flex;align-items:center;">→</div>
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:24px;width:200px;text-align:center;">
+          <div style="font-size:28px;margin-bottom:8px;">📋</div>
+          <div style="color:#e2e8f0;font-weight:700;font-size:14px;">Verified Leads</div>
+          <div style="color:#64748b;font-size:11px;">Ready to contact</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="option-a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Video Hero Background</h3>
+      <p>Full-screen autoplay video behind the hero text. Maximum impact, heavier load.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="option-b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Screenshots + Video Section</h3>
+      <p>Clean hero with UI screenshot, dedicated "See It In Action" video section below. Recommended for performance.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="option-c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Animated UI Only</h3>
+      <p>CSS-animated product flow instead of video. Lightweight, works everywhere, but less impressive.</p>
+    </div>
+  </div>
+</div>

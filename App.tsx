@@ -349,16 +349,73 @@ export default function App() {
                   strategicContext: session.strategicContext // Use structured memory
               };
 
-              // searchForLeads will now use the "Hub-and-Spoke" strategy to map cities within this specific country
-              const foundLeads = await searchForLeads(productContext);
-              
-              // Apply Deduplication Engine using session leads
-              const { unique: uniqueNewLeads } = deduplicateLeads(session.leads, foundLeads);
+              // --- APPLICATION-LED DISCOVERY (Autopilot) ---
+              const currentSessionFull = sessionsRef.current.find(s => s.id === session.id);
+              const sessionMemory = currentSessionFull?.memory;
+
+              let appMap = sessionMemory?.applicationMapHistory?.find(
+                m => m.country === scoutRegion
+              );
+
+              if (!appMap) {
+                addAgentLog(`[Auto-Pilot] Classifying product role for ${session.name}...`);
+                const productRole = await classifyProductRole(productContext, session.strategicContext);
+
+                addAgentLog(`[Auto-Pilot] Generating application map for ${scoutRegion}...`);
+                appMap = await generateApplicationMap(
+                  productContext, scoutRegion, productRole,
+                  session.strategicContext, sessionMemory?.applicationMapHistory || [],
+                  session.config.supplierCountry
+                );
+
+                addAgentLog(`[Auto-Pilot] ${appMap.applications.length} applications identified in ${scoutRegion}`);
+
+                // Save map to memory
+                const updatedMemory: CampaignMemory = {
+                  ...(sessionMemory || {
+                    events: [],
+                    preferredLeadPatterns: [],
+                    rejectedLeadPatterns: [],
+                    strongRegions: [],
+                    weakRegions: [],
+                    platformUsefulness: {},
+                    buyerTypePerformance: {},
+                    updatedAt: Date.now()
+                  }),
+                  applicationMapHistory: [
+                    ...(sessionMemory?.applicationMapHistory || []).slice(-19),
+                    appMap
+                  ],
+                  updatedAt: Date.now()
+                };
+
+                const updatedSessionWithMem = { ...session, memory: updatedMemory };
+                setSessions(prev => prev.map(s => s.id === session.id ? updatedSessionWithMem : s));
+                if (user) saveSession(user.uid, updatedSessionWithMem);
+              }
+
+              const budget = allocateLeadBudget(appMap.applications, scoutLeadCount);
+
+              const allFoundLeads: Lead[] = [];
+              for (const application of appMap.applications) {
+                const laneBudget = budget[application.id] || 0;
+                if (laneBudget === 0) continue;
+
+                try {
+                  const laneLeads = await searchApplicationLane(productContext, application, laneBudget);
+                  allFoundLeads.push(...laneLeads);
+                } catch (laneErr) {
+                  // Single lane failure — continue with others
+                }
+              }
+
+              // Apply Deduplication Engine
+              const { unique: uniqueNewLeads } = deduplicateLeads(session.leads, allFoundLeads);
 
               if (uniqueNewLeads.length > 0) {
                    const flaggedNewLeads = uniqueNewLeads.map(l => ({ ...l, isNew: true }));
                    const updatedLeads = [...session.leads, ...flaggedNewLeads];
-                   
+
                    const updatedSession: SearchSession = {
                        ...session,
                        leads: updatedLeads,
@@ -368,13 +425,13 @@ export default function App() {
                    // Update State
                    setSessions(prev => prev.map(s => s.id === session.id ? updatedSession : s));
                    if (user) saveSession(user.uid, updatedSession);
-                   
+
                    // Update active view if viewing this session
                    if (activeSessionId === session.id) {
                        setLeads(updatedLeads);
                    }
 
-                   addAgentLog(`[Auto-Pilot] ✅ Success! Found ${uniqueNewLeads.length} verified leads in ${scoutRegion}.`);
+                   addAgentLog(`[Auto-Pilot] ✅ Success! Found ${uniqueNewLeads.length} verified leads in ${scoutRegion} across ${appMap.applications.length} application lanes.`);
               } else {
                    // Update time only
                    const updatedSession = { ...session, lastScoutTime: now };

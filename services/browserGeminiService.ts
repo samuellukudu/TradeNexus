@@ -689,6 +689,21 @@ export const generateApplicationMap = async (
     ? `Past application maps for reference (use as inspiration only — do NOT copy; generate fresh applications from current product+country):\n${JSON.stringify(pastMaps.slice(-5))}`
     : "No past application maps available. Generate all applications from scratch.";
 
+  // Build audience-aware directive for application map generation
+  const audienceDirective = (() => {
+    switch (product.targetAudience) {
+      case 'Distributors/Importers':
+        return `Focus on companies in ${country} that IMPORT, DISTRIBUTE, WHOLESALE, or RETAIL this product. Look for trading companies, importers, distributors, dealers, retailers, wholesalers, and channel partners who buy from foreign suppliers to resell locally. Each application should describe a distribution or retail context where this product would be stocked, resold, or re-distributed in ${country}.`;
+      case 'OEMs/Manufacturers':
+        return `Focus on companies in ${country} that INCORPORATE this product as a component, input, or production asset into their own manufacturing or assembly. Look for OEMs, factories, and manufacturers that need this product for their production, assembly lines, or value-added processing. Each application should describe a manufacturing context where this product is an essential input.`;
+      case 'End Users':
+        return `Focus on companies in ${country} that directly USE or OPERATE this product in their business operations. Each application must describe a real operational context where companies USE this product (not resell it).`;
+      case 'All':
+      default:
+        return `Include ALL viable buyer types in ${country} — end users who operate the product, distributors and importers who resell it, OEMs and manufacturers who incorporate it, retailers and wholesalers who stock it, and channel partners who specify or finance it. Generate a diverse mix of applications covering different buyer categories (resellers, end users, manufacturers). Ensure at least some applications target distribution and retail channels and some target operational end users.`;
+    }
+  })();
+
   const response = await ai.models.generateContent({
     model: GROUNDING_MODEL,
     contents: {
@@ -701,13 +716,14 @@ export const generateApplicationMap = async (
           Supplier country: ${supplierCountry || product.supplierCountry || "China"}
           Target country: ${country}
           Product role: ${JSON.stringify(productRole)}
+          Target audience strategy: ${product.targetAudience || "All"}
           ${context ? `Strategic context: ${JSON.stringify(context)}` : ""}
 
           ${pastMapsContext}
 
           Use Google Search to research ${country}'s industries, infrastructure gaps, economic conditions, climate, regulations, and regional clusters relevant to this product.
 
-          Generate a country-specific application map. Each application must describe a real operational context where companies in ${country} USE this product (not resell it).
+          Generate a country-specific application map. ${audienceDirective}
 
           For each application, provide:
           - name: specific application context (e.g. "commercial irrigation farms")
@@ -876,6 +892,23 @@ export const searchApplicationLane = async (
     }
   }
 
+  // Override targeting directive based on user's target audience strategy
+  if (product.targetAudience && product.targetAudience !== 'All') {
+    const audienceTargeting = (() => {
+      switch (product.targetAudience) {
+        case 'Distributors/Importers':
+          return `Find DISTRIBUTORS, IMPORTERS, WHOLESALERS, DEALERS, RETAILERS, and CHANNEL PARTNERS in this application context. Look for trading companies that buy from foreign suppliers to resell locally. Prioritize companies whose business model is resale and distribution over end use.`;
+        case 'OEMs/Manufacturers':
+          return `Find OEMs and MANUFACTURERS that incorporate this product into their own production. Look for factories, assembly operations, and industrial producers that use this product as an input or component. Prioritize companies with manufacturing or value-added processing operations.`;
+        case 'End Users':
+          return `Find END USERS and OPERATORS that directly use this product in their business operations. Look for companies whose operations depend on this type of product. Prioritize companies that consume or operate the product themselves rather than reselling it.`;
+        default:
+          return targetingDirective;
+      }
+    })();
+    targetingDirective = audienceTargeting;
+  }
+
   const response = await ai.models.generateContent({
     model: GROUNDING_MODEL,
     contents: {
@@ -889,6 +922,7 @@ export const searchApplicationLane = async (
           Product: ${product.name}
           Description: ${product.description || product.name}
           Supplier country: ${product.supplierCountry || "China"}
+          Target audience strategy: ${product.targetAudience || "All"}
           ${productRole ? `Product role: ${productRole.role} (resold by: ${productRole.resellerTypes.join(", ") || "various"}, installed by: ${productRole.installerTypes.join(", ") || "various"}, operated by: ${productRole.operatorTypes.join(", ") || "various"})` : ""}
 
           Application: ${application.name}

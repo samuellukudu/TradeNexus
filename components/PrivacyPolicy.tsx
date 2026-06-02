@@ -1,6 +1,8 @@
 import React from 'react';
+import { useLanguage } from '../i18n';
 
 export function PrivacyPolicy() {
+  const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans overflow-y-auto">
       {/* Navigation */}
@@ -21,8 +23,8 @@ export function PrivacyPolicy() {
       {/* Privacy Policy Content */}
       <main className="pt-24 pb-16 px-6">
         <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Privacy Policy</h1>
-          <p className="text-slate-400 text-sm mb-8">Last updated: May 26, 2026</p>
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{t('privacy.title')}</h1>
+          <p className="text-slate-400 text-sm mb-8">{t('privacy.lastUpdated')}: May 26, 2026</p>
 
           <div className="prose prose-invert prose-slate max-w-none space-y-8">
             <section>

@@ -175,7 +175,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -248,6 +248,12 @@ export default function App() {
   useEffect(() => {
       leadsRef.current = leads;
   }, [leads]);
+
+  // Translate terminal boot logs when language changes
+  useEffect(() => {
+    const bootKeys = ['terminal.init.0', 'terminal.init.1', 'terminal.init.2', 'terminal.init.3'] as const;
+    setAgentLogs(prev => [...bootKeys.map(k => t(k)), ...prev.slice(4)]);
+  }, [language, t]);
 
   // Sync Active Session to Database whenever critical data changes
   const updateActiveSession = (newLeads: Lead[], newSuggestions?: RegionSuggestion[]) => {

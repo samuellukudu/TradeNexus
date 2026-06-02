@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLanguage } from '../i18n';
 import { SupplierProfile } from '../types';
 
 interface Props {
@@ -17,6 +18,7 @@ export const SupplierProfileView: React.FC<Props> = ({ profile, onSave }) => {
     valueProposition: profile?.valueProposition || '',
   });
 
+  const { t } = useLanguage();
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
@@ -47,18 +49,15 @@ export const SupplierProfileView: React.FC<Props> = ({ profile, onSave }) => {
     <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-950 h-full">
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white tracking-tight mb-2">Supplier Profile (Optional)</h1>
-          <p className="text-slate-400">
-            Configure your company details. Providing this information helps TradeNexus 
-            personalize outbound messages and negotiate more effectively with prospects.
-          </p>
+          <h1 className="text-2xl font-bold text-white tracking-tight mb-2">{t('profile.title')} {t('profile.optional')}</h1>
+          <p className="text-slate-400">{t('profile.subtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6 bg-slate-900 border border-slate-800 rounded-xl p-6 md:p-8">
           {/* Grid layout for fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Company Name</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('profile.companyName')}</label>
               <input 
                  type="text" 
                  name="companyName" 
@@ -69,7 +68,7 @@ export const SupplierProfileView: React.FC<Props> = ({ profile, onSave }) => {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Website</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('profile.website')}</label>
               <input 
                  type="url" 
                  name="website" 
@@ -81,7 +80,7 @@ export const SupplierProfileView: React.FC<Props> = ({ profile, onSave }) => {
             </div>
             
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Primary Contact Name</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('profile.contactName')}</label>
               <input 
                  type="text" 
                  name="contactName" 
@@ -92,7 +91,7 @@ export const SupplierProfileView: React.FC<Props> = ({ profile, onSave }) => {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Primary Contact Email</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('profile.contactEmail')}</label>
               <input 
                  type="email" 
                  name="contactEmail" 
@@ -105,7 +104,7 @@ export const SupplierProfileView: React.FC<Props> = ({ profile, onSave }) => {
           </div>
 
           <div>
-             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Primary Contact Phone (Optional)</label>
+             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('profile.contactPhone')}</label>
              <input 
                 type="tel" 
                 name="contactPhone" 
@@ -117,7 +116,7 @@ export const SupplierProfileView: React.FC<Props> = ({ profile, onSave }) => {
           </div>
 
           <div>
-             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Company Description</label>
+             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('profile.companyDescription')}</label>
              <textarea 
                 name="companyDescription" 
                 value={formData.companyDescription} 
@@ -128,7 +127,7 @@ export const SupplierProfileView: React.FC<Props> = ({ profile, onSave }) => {
           </div>
 
           <div>
-             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Unique Value Proposition</label>
+             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('profile.valueProposition')}</label>
              <textarea 
                 name="valueProposition" 
                 value={formData.valueProposition} 
@@ -139,12 +138,12 @@ export const SupplierProfileView: React.FC<Props> = ({ profile, onSave }) => {
           </div>
 
           <div className="flex justify-end items-center gap-4 pt-4 border-t border-slate-800">
-             {isSaved && <span className="text-green-500 text-sm font-medium animate-pulse">Profile saved successfully!</span>}
+             {isSaved && <span className="text-green-500 text-sm font-medium animate-pulse">{t('profile.saved')}</span>}
              <button 
                 type="submit" 
                 className="bg-primary-600 hover:bg-primary-500 text-white font-medium py-2 px-6 rounded-lg transition-colors shadow-lg shadow-primary-500/20"
              >
-                 Save Profile
+                 {t('profile.save')}
              </button>
           </div>
         </form>

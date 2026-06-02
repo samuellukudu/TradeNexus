@@ -7,7 +7,7 @@ import { useCases, howItWorksStepKeys } from './landingData';
 
 interface LandingPageProps {
   handleEmailAuth: (e: React.FormEvent) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: () => Promise<any>;
   email: string;
   setEmail: (email: string) => void;
   password: string;

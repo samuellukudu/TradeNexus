@@ -43,9 +43,8 @@ import {
   fetchReporters,
   fetchPartners,
   fetchHsCodes,
-  TradeRecord,
-  ReferenceItem
 } from './services/comtradeAPI';
+import type { TradeRecord, ReferenceItem } from './types';
 import { LandingPage } from './LandingPage';
 import { fetchWorldBankData } from './services/worldBankAPI';
 import { TRANSLATIONS, Language } from './lib/translations';
@@ -583,40 +582,38 @@ export default function App() {
     
     let headers = ['Year'];
     if (dataSource !== 'worldbank') {
-      headers = [...headers, 'Imports Value (USD)', 'Imports YoY (%)', 'Exports Value (USD)', 'Exports YoY (%)'];
+      headers = [...headers, 'Imports Value (USD)', 'Exports Value (USD)'];
     } else {
-      if (wbCategory === 'financial') headers = [...headers, 'Capital Formation (% of GDP)', 'Remittances (% of GDP)'];
-      else if (wbCategory === 'general') headers = [...headers, 'GDP (USD)', 'Reserves (USD)'];
-      else if (wbCategory === 'macro') headers = [...headers, 'GDP per Capita (PPP)', 'Inflation (%)'];
+      if (wbCategory === 'investment') headers = [...headers, 'Capital Formation (% of GDP)', 'Remittances (% of GDP)'];
+      else if (wbCategory === 'gdp') headers = [...headers, 'GDP (USD)', 'Reserves (USD)'];
+      else if (wbCategory === 'consumer') headers = [...headers, 'GDP per Capita (PPP)', 'Inflation (%)'];
       else if (wbCategory === 'trade') headers = [...headers, 'Total Imports (% of GDP)', 'Total Exports (% of GDP)'];
       else if (wbCategory === 'fdi') headers = [...headers, 'FDI Net Inflows (% of GDP)', 'FDI Net Outflows (% of GDP)'];
     }
 
     const csvRows = [headers.join(',')];
-    
+
     mergedChartData.forEach(row => {
-      const rowValues = [row.year];
+      const rowValues: (string | number)[] = [row.period];
       if (dataSource !== 'worldbank') {
-        rowValues.push(row.tradeM || '');
-        rowValues.push(row.tradeM_yoy ? String(row.tradeM_yoy) : '');
-        rowValues.push(row.tradeX || '');
-        rowValues.push(row.tradeX_yoy ? String(row.tradeX_yoy) : '');
+        rowValues.push(row.comtradeImport ?? '');
+        rowValues.push(row.comtradeExport ?? '');
       } else {
-        if (wbCategory === 'financial') {
-          rowValues.push(row.capital || '');
-          rowValues.push(row.remittance || '');
-        } else if (wbCategory === 'general') {
-          rowValues.push(row.gdp || '');
-          rowValues.push(row.reserves || '');
-        } else if (wbCategory === 'macro') {
-          rowValues.push(row.gdpCapitaPpp || '');
-          rowValues.push(row.inflation || '');
+        if (wbCategory === 'investment') {
+          rowValues.push(row.worldBankCapital ?? '');
+          rowValues.push(row.worldBankRemittances ?? '');
+        } else if (wbCategory === 'gdp') {
+          rowValues.push(row.worldBankGdp ?? '');
+          rowValues.push(row.worldBankReserves ?? '');
+        } else if (wbCategory === 'consumer') {
+          rowValues.push(row.worldBankGdpCapitaPpp ?? '');
+          rowValues.push(row.worldBankInflation ?? '');
         } else if (wbCategory === 'trade') {
-          rowValues.push(row.tradeM || '');
-          rowValues.push(row.tradeX || '');
+          rowValues.push(row.worldBankImport ?? '');
+          rowValues.push(row.worldBankExport ?? '');
         } else if (wbCategory === 'fdi') {
-          rowValues.push(row.fdiIn || '');
-          rowValues.push(row.fdiOut || '');
+          rowValues.push(row.worldBankFdiIn ?? '');
+          rowValues.push(row.worldBankFdiOut ?? '');
         }
       }
       csvRows.push(rowValues.join(','));
@@ -2518,12 +2515,12 @@ export default function App() {
                 </p>
                 <div className="bg-slate-950 border border-slate-850 rounded-xl p-4 overflow-x-auto relative group">
                   <pre className="text-xs font-mono text-slate-305 text-slate-300 whitespace-pre-wrap word-break-all">
-                    {dataSource === 'worldbank' 
+                    {dataSource === 'worldbank'
                       ? `curl -X GET "https://api.worldbank.org/v2/country/${importer}/indicator/${
-                          wbCategory === 'financial' ? 'NE.GDI.TOTL.ZS' : 
-                          wbCategory === 'general' ? 'NY.GDP.MKTP.CD' : 
-                          wbCategory === 'macro' ? 'NY.GDP.PCAP.PP.CD' : 
-                          wbCategory === 'trade' ? 'NE.IMP.GNFS.ZS' : 
+                          wbCategory === 'investment' ? 'NE.GDI.TOTL.ZS' :
+                          wbCategory === 'gdp' ? 'NY.GDP.MKTP.CD' :
+                          wbCategory === 'consumer' ? 'NY.GDP.PCAP.PP.CD' :
+                          wbCategory === 'trade' ? 'NE.IMP.GNFS.ZS' :
                           'BX.KLT.DINV.WD.GD.ZS'
                         }?format=json&per_page=100" \\
   -H "Accept: application/json"`
@@ -2533,12 +2530,12 @@ export default function App() {
                   </pre>
                   <button 
                     onClick={() => {
-                      const text = dataSource === 'worldbank' 
+                      const text = dataSource === 'worldbank'
                       ? `curl -X GET "https://api.worldbank.org/v2/country/${importer}/indicator/${
-                          wbCategory === 'financial' ? 'NE.GDI.TOTL.ZS' : 
-                          wbCategory === 'general' ? 'NY.GDP.MKTP.CD' : 
-                          wbCategory === 'macro' ? 'NY.GDP.PCAP.PP.CD' : 
-                          wbCategory === 'trade' ? 'NE.IMP.GNFS.ZS' : 
+                          wbCategory === 'investment' ? 'NE.GDI.TOTL.ZS' :
+                          wbCategory === 'gdp' ? 'NY.GDP.MKTP.CD' :
+                          wbCategory === 'consumer' ? 'NY.GDP.PCAP.PP.CD' :
+                          wbCategory === 'trade' ? 'NE.IMP.GNFS.ZS' :
                           'BX.KLT.DINV.WD.GD.ZS'
                         }?format=json&per_page=100" -H "Accept: application/json"`
                       : `curl -X GET "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=${importer}&partnerCode=${exporter}&cmdCode=${cmdCode}&flowCode=M,X&period=${customPeriod.trim() && customPeriod.trim().toLowerCase() !== 'all' ? customPeriod.trim() : [...Array(13)].map((_, i) => (new Date().getFullYear()) - i).join(',')}" -H "Accept: application/json"`;

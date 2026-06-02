@@ -10,7 +10,7 @@ import {
   RegionSuggestion,
   StrategicContext
 } from "../types";
-import { ProductRole, ProductApplication, CountryApplicationMap, ApplicationSourceType, LaneQualificationReport, LeadQualificationResult } from "../types/applicationTypes";
+import { ProductRole, ProductApplication, CountryApplicationMap, ApplicationSourceType, LaneQualificationReport, LeadQualificationResult, LeadQualification } from "../types/applicationTypes";
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 const DEFAULT_MODEL = (import.meta.env.VITE_GEMINI_DEFAULT_MODEL as string | undefined) || "gemini-2.5-flash";

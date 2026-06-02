@@ -22,6 +22,7 @@ const asyncRoute = (
 };
 
 const ai = await import("./geminiService");
+const tradesightProxy = await import("./tradesightProxy.js");
 
 // Agent module imports (Phase 1+ — stubs throw until their phase is implemented)
 const agentSocialDiscovery = await import("./agent/discovery/socialDiscovery.js");
@@ -178,6 +179,9 @@ app.post("/api/agent/follow-up-sequence", asyncRoute(async (req, res) => {
   const sequence = await agentOutreachFollowUp.planFollowUpSequence(lead, draftId, strategy);
   res.json({ sequence });
 }));
+
+// UN Comtrade proxy for tradesight (browser CORS workaround)
+tradesightProxy.registerTradesightProxy(app);
 
 if (isProduction) {
   const distPath = path.join(root, "dist");

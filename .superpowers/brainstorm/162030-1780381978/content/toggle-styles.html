@@ -1,0 +1,74 @@
+<h2>Language Toggle — Visual Style</h2>
+<p class="subtitle">How should the toggle look and behave? All sit in the top nav bar.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Simple text button</h3>
+      <p>Just "EN | 中文" or "EN / 中文" — minimal, clear, no icon overhead</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Globe icon + dropdown</h3>
+      <p>🌐 icon that opens a small dropdown with "English" / "中文(Chinese)" — more polished, discoverable</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Inline pill toggle</h3>
+      <p>A small segmented pill/switch: <b>EN</b> | 中文 — instant toggle, no dropdown, very compact</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Mockup — All three styles in a nav bar</h3>
+</div>
+
+<div class="mockup">
+  <div class="mockup-body">
+    <!-- Option A -->
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:14px 20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-weight:bold;font-size:14px;">🔵 TradeNexus AI</span>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <span style="color:#94a3b8;font-size:13px;">Dashboard</span>
+        <span style="color:#94a3b8;font-size:13px;">Operations</span>
+        <span style="background:#1e293b;border:1px solid #475569;border-radius:6px;padding:5px 12px;font-size:13px;color:#e2e8f0;cursor:pointer;font-family:monospace;">EN | 中文</span>
+        <span style="background:#1e293b;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;">👤</span>
+      </div>
+    </div>
+
+    <!-- Option B -->
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:14px 20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-weight:bold;font-size:14px;">🔵 TradeNexus AI</span>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <span style="color:#94a3b8;font-size:13px;">Dashboard</span>
+        <span style="color:#94a3b8;font-size:13px;">Operations</span>
+        <span style="background:#1e293b;border:1px solid #475569;border-radius:6px;padding:5px 10px;font-size:13px;color:#e2e8f0;cursor:pointer;display:flex;align-items:center;gap:6px;">🌐 <span style="font-size:12px;">EN</span> <span style="color:#64748b;font-size:10px;">▾</span></span>
+        <span style="background:#1e293b;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;">👤</span>
+      </div>
+    </div>
+
+    <!-- Option C -->
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-weight:bold;font-size:14px;">🔵 TradeNexus AI</span>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <span style="color:#94a3b8;font-size:13px;">Dashboard</span>
+        <span style="color:#94a3b8;font-size:13px;">Operations</span>
+        <div style="display:flex;border:1px solid #475569;border-radius:20px;overflow:hidden;font-size:12px;">
+          <span style="background:#2563eb;color:white;padding:4px 12px;cursor:pointer;font-weight:600;">EN</span>
+          <span style="background:#1e293b;color:#94a3b8;padding:4px 12px;cursor:pointer;">中文</span>
+        </div>
+        <span style="background:#1e293b;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;">👤</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:16px;padding:12px 16px;background:#1e293b;border-radius:8px;border-left:3px solid #3b82f6;">
+  <p style="margin:0;color:#e2e8f0;font-size:14px;"><strong>Recommendation: Option C (pill toggle).</strong> Instant one-click switch, no dropdown needed for only 2 languages, compact, and the active state is obvious. Looks modern in a dark-theme app.</p>
+</div>

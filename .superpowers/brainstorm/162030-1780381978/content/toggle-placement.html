@@ -1,0 +1,109 @@
+<h2>Where should the language toggle go?</h2>
+<p class="subtitle">TradeNexus has two main surfaces — the landing page and the authenticated app. Both need the toggle.</p>
+
+<div class="section">
+  <h3>Surface 1: Landing Page Nav</h3>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Landing Page — Top Nav Bar (right side)</div>
+  <div class="mockup-body">
+    <div class="mock-nav" style="display:flex;justify-content:space-between;align-items:center;padding:12px 24px;">
+      <span style="font-weight:bold;">🔵 TradeNexus AI</span>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <span style="color:#94a3b8;font-size:14px;">How It Works</span>
+        <span style="color:#94a3b8;font-size:14px;">Use Cases</span>
+        <span style="color:#94a3b8;font-size:14px;">Pricing</span>
+        <span style="background:#1e293b;border:1px solid #475569;border-radius:6px;padding:4px 10px;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">🌐 EN ▾</span>
+        <button class="mock-button" style="padding:6px 16px;">Sign In</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Surface 2: Authenticated App</h3>
+  <p class="subtitle">Where should the toggle live in the main workspace?</p>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Top Nav Bar (right, next to user/profile)</h3>
+      <p>Same pattern as landing page — consistent placement, always visible, doesn't compete with primary actions</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Sidebar (bottom, below navigation)</h3>
+      <p>Tucked into the left sidebar — less visually prominent but still accessible. Common in enterprise SaaS.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Settings / Profile area only</h3>
+      <p>Buried in a settings panel or profile dropdown. Cleanest UI but requires an extra click to access.</p>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:32px;">
+  <div class="mockup-header">App Shell — Showing Option A (top nav) vs Option B (sidebar)</div>
+  <div class="mockup-body">
+    <div class="split">
+      <div class="mockup" style="border:none;box-shadow:none;">
+        <div class="mockup-header" style="font-size:11px;">Option A — Top Nav toggle</div>
+        <div style="background:#0f172a;min-height:280px;border-radius:0 0 8px 8px;overflow:hidden;border:1px solid #334155;">
+          <div class="mock-nav" style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#0f172a;border-bottom:1px solid #1e293b;">
+            <span style="font-weight:bold;font-size:14px;">🔵 TradeNexus AI</span>
+            <div style="display:flex;gap:12px;align-items:center;">
+              <span style="color:#94a3b8;font-size:12px;">Dashboard</span>
+              <span style="color:#94a3b8;font-size:12px;">Operations</span>
+              <span style="background:#1e293b;border:1px solid #475569;border-radius:4px;padding:3px 8px;font-size:11px;display:flex;align-items:center;gap:3px;">🌐 EN ▾</span>
+              <span style="background:#1e293b;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;">👤</span>
+            </div>
+          </div>
+          <div style="display:flex;min-height:240px;">
+            <div class="mock-sidebar" style="width:200px;padding:12px;background:#0f172a;border-right:1px solid #1e293b;">
+              <div class="placeholder" style="font-size:11px;">+ New Search</div>
+              <div class="placeholder" style="font-size:11px;">Session 1</div>
+              <div class="placeholder" style="font-size:11px;">Session 2</div>
+            </div>
+            <div class="mock-content" style="flex:1;padding:16px;background:#020617;">
+              <div class="placeholder">Main Workspace</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mockup" style="border:none;box-shadow:none;">
+        <div class="mockup-header" style="font-size:11px;">Option B — Sidebar bottom toggle</div>
+        <div style="background:#0f172a;min-height:280px;border-radius:0 0 8px 8px;overflow:hidden;border:1px solid #334155;">
+          <div class="mock-nav" style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#0f172a;border-bottom:1px solid #1e293b;">
+            <span style="font-weight:bold;font-size:14px;">🔵 TradeNexus AI</span>
+            <div style="display:flex;gap:12px;align-items:center;">
+              <span style="color:#94a3b8;font-size:12px;">Dashboard</span>
+              <span style="color:#94a3b8;font-size:12px;">Operations</span>
+              <span style="background:#1e293b;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;">👤</span>
+            </div>
+          </div>
+          <div style="display:flex;min-height:240px;">
+            <div class="mock-sidebar" style="width:200px;padding:12px;background:#0f172a;border-right:1px solid #1e293b;display:flex;flex-direction:column;justify-content:space-between;">
+              <div>
+                <div class="placeholder" style="font-size:11px;">+ New Search</div>
+                <div class="placeholder" style="font-size:11px;">Session 1</div>
+                <div class="placeholder" style="font-size:11px;">Session 2</div>
+              </div>
+              <div style="background:#1e293b;border:1px solid #475569;border-radius:4px;padding:4px 8px;font-size:11px;display:flex;align-items:center;gap:3px;justify-content:center;">🌐 EN ▾</div>
+            </div>
+            <div class="mock-content" style="flex:1;padding:16px;background:#020617;">
+              <div class="placeholder">Main Workspace</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,8 +1,8 @@
 import type { TradeRecord, ReferenceItem } from '../types';
 import { getCachedOrFetchClient } from '../lib/clientCache';
 
-const COMRADE_PREVIEW_BASE = 'https://comtradeapi.un.org/public/v1/preview/C/A/HS';
-const COMRADE_REF_BASE = 'https://comtradeapi.un.org/files/v1/app/reference';
+const COMRADE_PREVIEW_BASE = '/api/comtrade/public/v1/preview/C/A/HS';
+const COMRADE_REF_BASE = '/api/comtrade/files/v1/app/reference';
 
 let requestPromise: Promise<void> = Promise.resolve();
 

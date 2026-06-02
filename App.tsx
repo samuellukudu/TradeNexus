@@ -1245,10 +1245,20 @@ export default function App() {
             setSelectedLeadId(null);
             setIsSidebarOpen(true);
           }}
-          className="w-9 h-9 rounded-full bg-primary-500/90 shadow-lg shadow-primary-500/20"
+          className="w-9 h-9 rounded-full flex items-center justify-center bg-primary-500/90 shadow-lg shadow-primary-500/20"
           aria-label="TradeNexus home"
           title="TradeNexus"
-        />
+        >
+          <svg width="24" height="24" viewBox="0 0 52 52" fill="none" className="w-5 h-5">
+            <circle cx="26" cy="26" r="20" stroke="white" strokeWidth="2.5" fill="none" opacity="0.7"/>
+            <path d="M14 26 A12 12 0 0 1 38 26" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round"/>
+            <path d="M14 26 A12 12 0 0 0 38 26" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.7"/>
+            <circle cx="14" cy="26" r="3.5" fill="white" opacity="0.9"/>
+            <circle cx="38" cy="26" r="3.5" fill="white" opacity="0.7"/>
+            <circle cx="26" cy="26" r="4.5" fill="white"/>
+            <circle cx="26" cy="26" r="2.2" fill="#3b82f6"/>
+          </svg>
+        </button>
 
         <div className="flex flex-col items-center gap-8">
           <button

@@ -1,6 +1,7 @@
 // i18n/index.tsx
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import en from './en';
+import type { Translations } from './en';
 import zh from './zh';
 
 export type Language = 'en' | 'zh';
@@ -8,7 +9,7 @@ export type Language = 'en' | 'zh';
 interface LanguageContextValue {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: keyof Translations) => string;
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
@@ -34,7 +35,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem(STORAGE_KEY, lang);
     } catch {}
-    document.documentElement.lang = lang;
   }, []);
 
   // Sync html lang attribute on first render
@@ -43,9 +43,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, [language]);
 
   const t = useCallback(
-    (key: string): string => {
+    (key: keyof Translations): string => {
       const dict = language === 'en' ? en : zh;
-      return (dict as Record<string, string>)[key] ?? key;
+      return (dict as Record<keyof Translations, string>)[key] ?? key;
     },
     [language],
   );

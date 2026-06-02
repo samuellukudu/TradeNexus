@@ -1249,7 +1249,7 @@ export default function App() {
           aria-label="TradeNexus home"
           title="TradeNexus"
         >
-          <svg width="24" height="24" viewBox="0 0 52 52" fill="none" className="w-5 h-5">
+          <svg viewBox="0 0 52 52" fill="none" className="w-5 h-5" aria-hidden="true">
             <circle cx="26" cy="26" r="20" stroke="white" strokeWidth="2.5" fill="none" opacity="0.7"/>
             <path d="M14 26 A12 12 0 0 1 38 26" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round"/>
             <path d="M14 26 A12 12 0 0 0 38 26" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.7"/>

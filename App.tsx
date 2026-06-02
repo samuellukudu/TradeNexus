@@ -1250,11 +1250,6 @@ export default function App() {
           title="TradeNexus"
         />
 
-        {/* Language Toggle */}
-        <div className="flex justify-center">
-          <LanguageToggle />
-        </div>
-
         <div className="flex flex-col items-center gap-8">
           <button
             onClick={() => {
@@ -1336,6 +1331,7 @@ export default function App() {
                     <p className="text-xs text-slate-500 mt-1">Autonomous B2B Sales System</p>
                   </div>
                   <div className="flex items-center gap-3">
+                    <LanguageToggle />
                     {/* Mobile Close Button */}
                     <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white">
                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>

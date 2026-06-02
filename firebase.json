@@ -8,13 +8,6 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
-        "source": "/api/comtrade/**",
-        "run": {
-          "serviceId": "tradenexus-ai-sales-agent",
-          "region": "us-central1"
-        }
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }

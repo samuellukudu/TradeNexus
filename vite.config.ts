@@ -8,13 +8,6 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
-        proxy: {
-          '/api/comtrade': {
-            target: 'https://comtradeapi.un.org',
-            changeOrigin: true,
-            rewrite: (path) => path.replace(/^\/api\/comtrade/, ''),
-          },
-        },
       },
       plugins: [react()],
       resolve: {

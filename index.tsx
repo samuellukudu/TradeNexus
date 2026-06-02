@@ -1,24 +1,18 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
-import { LanguageProvider } from "./i18n";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import { LanguageProvider } from './i18n';
 
-const rootElement = document.getElementById("root")!;
-
-if (window.location.pathname.startsWith("/tradesight")) {
-  import("./tradesight/App.tsx").then((mod) => {
-    createRoot(rootElement).render(
-      <StrictMode>
-        <mod.default />
-      </StrictMode>
-    );
-  });
-} else {
-  createRoot(rootElement).render(
-    <StrictMode>
-      <LanguageProvider>
-        <App />
-      </LanguageProvider>
-    </StrictMode>
-  );
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error("Could not find root element to mount to");
 }
+
+const root = ReactDOM.createRoot(rootElement);
+root.render(
+  <React.StrictMode>
+    <LanguageProvider>
+      <App />
+    </LanguageProvider>
+  </React.StrictMode>
+);

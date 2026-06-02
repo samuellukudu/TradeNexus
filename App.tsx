@@ -1470,7 +1470,7 @@ export default function App() {
                         
                         {/* Target Company Size */}
                         <div className="mb-4">
-                          <label className="block text-[10px] text-slate-500 mb-1 font-bold">Target Company Size</label>
+                          <label className="block text-[10px] text-slate-500 mb-1 font-bold">{t('app.companySize')}</label>
                           <select 
                             value={targetCompanySize}
                             onChange={e => setTargetCompanySize(e.target.value)}
@@ -1482,7 +1482,7 @@ export default function App() {
                         
                         {/* Region & Countries */}
                         <div className="mb-4">
-                          <label className="block text-[10px] text-slate-500 mb-1 font-bold">Region</label>
+                          <label className="block text-[10px] text-slate-500 mb-1 font-bold">{t('app.continent')}</label>
                           <select 
                             value={continent}
                             onChange={handleContinentChange}

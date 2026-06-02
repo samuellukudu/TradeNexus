@@ -19,6 +19,8 @@
     "jspdf": "2.5.1",
     "lucide-react": "^1.14.0",
     "motion": "^12.38.0",
+    "rc-slider": "^11.1.9",
+    "recharts": "^3.8.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-markdown": "^10.1.0",

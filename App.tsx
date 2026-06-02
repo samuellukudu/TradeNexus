@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useLanguage } from './i18n';
 import { searchForLeads, analyzeMarkets, generateMarketReport, extractSearchStrategyFromAssets, classifyProductRole, generateApplicationMap, searchApplicationLane, allocateLeadBudget, qualifyLeadsForApplication } from './services/geminiService';
 import { discoverLeadsFromSocial } from './services/agent/socialDiscoveryService';
 import { getSessions, saveSession, deleteSession, getSupplierProfile, saveSupplierProfile } from './services/storageService';
@@ -12,6 +13,7 @@ import { InteractionViewer } from './components/InteractionViewer';
 import { Dashboard } from './components/Dashboard';
 import { MarketReportModal } from './components/MarketReportModal';
 import { SupplierProfileView } from './components/SupplierProfileView';
+import { LanguageToggle } from './components/LanguageToggle';
 import { v4 as uuidv4 } from 'uuid';
 import { auth, loginWithGoogle, logout, loginWithEmail, registerWithEmail } from './services/firebase';
 import { LandingPage } from './components/LandingPage';
@@ -172,6 +174,8 @@ export default function App() {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [authError, setAuthError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { t } = useLanguage();
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1252,8 +1256,8 @@ export default function App() {
                 ? 'bg-slate-800 text-slate-200'
                 : 'text-slate-500 hover:text-slate-200 hover:bg-slate-900'
             }`}
-            aria-label="Operations"
-            title="Operations"
+            aria-label={t('nav.operations')}
+            title={t('nav.operations')}
           >
             <Home className="w-6 h-6" strokeWidth={2.2} />
           </button>
@@ -1269,26 +1273,31 @@ export default function App() {
                 ? 'bg-slate-800 text-slate-200'
                 : 'text-slate-500 hover:text-slate-200 hover:bg-slate-900'
             }`}
-            aria-label="Supplier profile"
-            title="Supplier profile"
+            aria-label={t('nav.profile')}
+            title={t('nav.profile')}
           >
             <UserRound className="w-6 h-6" strokeWidth={2.2} />
           </button>
           <button
             onClick={startNewCampaign}
             className="w-12 h-12 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-slate-900 transition-colors"
-            aria-label="Start new campaign"
-            title="Start new campaign"
+            aria-label={t('nav.newCampaign')}
+            title={t('nav.newCampaign')}
           >
             <Plus className="w-6 h-6" strokeWidth={2.2} />
           </button>
         </div>
 
+        {/* Language Toggle */}
+        <div className="flex justify-center mb-2">
+          <LanguageToggle />
+        </div>
+
         <button
           onClick={logout}
           className="mt-auto w-12 h-12 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-slate-900 transition-colors"
-          aria-label="Logout"
-          title="Logout"
+          aria-label={t('nav.logout')}
+          title={t('nav.logout')}
         >
           <LogOut className="w-6 h-6" strokeWidth={2.2} />
         </button>
@@ -1378,34 +1387,34 @@ export default function App() {
 
                     <div className="border-t border-slate-800 pt-4">
                         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
-                            {activeSessionId ? 'Current Campaign Config' : 'New Campaign Setup'}
+                            {activeSessionId ? t('app.currentCampaignConfig') : t('app.newCampaignSetup')}
                         </h2>
                         
                         {/* Product Name */}
                         <div className="mb-4">
-                          <label className="block text-[10px] text-slate-500 mb-1 font-bold">Product Name</label>
+                          <label className="block text-[10px] text-slate-500 mb-1 font-bold">{t('app.productName')}</label>
                           <input 
                             type="text" 
                             value={productName}
                             onChange={e => setProductName(e.target.value)}
-                            placeholder="e.g. Lithium Ion Batteries"
+                            placeholder={t('app.productNamePlaceholder')}
                             className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary-500 text-white placeholder-slate-600 mb-2"
                           />
-                          <label className="block text-[10px] text-slate-500 mb-1 font-bold mt-2">Description / Specifications</label>
+                          <label className="block text-[10px] text-slate-500 mb-1 font-bold mt-2">{t('app.descriptionSpecs')}</label>
                           <textarea 
                             value={productDescription}
                             onChange={e => setProductDescription(e.target.value)}
-                            placeholder="Paste detailed product specs, brand names, or catalog text here..."
+                            placeholder={t('app.descriptionPlaceholder')}
                             className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-xs focus:outline-none focus:border-primary-500 text-white placeholder-slate-600 min-h-[100px] align-top"
                           />
                         </div>
 
                         {/* Product Assets Upload */}
                         <div className="mb-4">
-                           <label className="block text-[10px] text-slate-500 mb-1 font-bold">Product Assets (PDF/Image)</label>
+                           <label className="block text-[10px] text-slate-500 mb-1 font-bold">{t('app.productAssets')}</label>
                            <label className="flex flex-col items-center justify-center w-full h-16 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer bg-slate-800/50 hover:bg-slate-800 hover:border-primary-500/50 transition-all mb-2 relative">
                                 <div className="flex flex-col items-center justify-center pt-1 pb-1">
-                                    <span className="text-[9px] text-slate-500">Upload Product Docs (PDF/Image)</span>
+                                    <span className="text-[9px] text-slate-500">{t('app.uploadDocs')}</span>
                                 </div>
                                 <input type="file" className="hidden" accept="image/*,.pdf" multiple onChange={handleAssetUpload} />
                             </label>
@@ -1431,7 +1440,7 @@ export default function App() {
 
                         {/* SUPPLIER COUNTRY (NEW) */}
                         <div className="mb-4">
-                          <label className="block text-[10px] text-slate-500 mb-1 font-bold uppercase tracking-wider">Supplier Country of Origin</label>
+                          <label className="block text-[10px] text-slate-500 mb-1 font-bold uppercase tracking-wider">{t('app.supplierCountry')}</label>
                           <select 
                             value={supplierCountry}
                             onChange={e => setSupplierCountry(e.target.value)}
@@ -1443,7 +1452,7 @@ export default function App() {
 
                         {/* TARGET AUDIENCE (NEW) */}
                         <div className="mb-4">
-                          <label className="block text-[10px] text-primary-400 mb-1 font-bold uppercase tracking-wider">Target Audience Strategy</label>
+                          <label className="block text-[10px] text-primary-400 mb-1 font-bold uppercase tracking-wider">{t('app.targetAudience')}</label>
                           <select 
                             value={targetAudience}
                             onChange={e => setTargetAudience(e.target.value as TargetAudienceType)}

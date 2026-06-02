@@ -1250,6 +1250,11 @@ export default function App() {
           title="TradeNexus"
         />
 
+        {/* Language Toggle */}
+        <div className="flex justify-center">
+          <LanguageToggle />
+        </div>
+
         <div className="flex flex-col items-center gap-8">
           <button
             onClick={() => {
@@ -1292,11 +1297,6 @@ export default function App() {
           >
             <Plus className="w-6 h-6" strokeWidth={2.2} />
           </button>
-        </div>
-
-        {/* Language Toggle */}
-        <div className="flex justify-center mb-2">
-          <LanguageToggle />
         </div>
 
         <button

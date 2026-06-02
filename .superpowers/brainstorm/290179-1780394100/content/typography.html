@@ -1,0 +1,102 @@
+<h2>Wordmark Typography</h2>
+<p class="subtitle">Same horizontal lockup, different font treatments for "TradeNexus." The app currently uses system-ui.</p>
+
+<div class="cards">
+  <div class="card" data-choice="font-system" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-body" style="padding:32px 24px;text-align:center;background:#0f172a">
+          <div style="display:inline-flex;align-items:center;gap:14px">
+            <svg width="36" height="36" viewBox="0 0 52 52" fill="none">
+              <circle cx="26" cy="26" r="20" stroke="#3b82f6" stroke-width="2.5" fill="none"/>
+              <path d="M14 26 A12 12 0 0 1 38 26" stroke="#3b82f6" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+              <path d="M14 26 A12 12 0 0 0 38 26" stroke="#60a5fa" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+              <circle cx="14" cy="26" r="4" fill="#3b82f6"/> <circle cx="38" cy="26" r="4" fill="#60a5fa"/>
+              <circle cx="14" cy="26" r="2" fill="white"/> <circle cx="38" cy="26" r="2" fill="white"/>
+              <circle cx="26" cy="26" r="5" fill="#3b82f6"/> <circle cx="26" cy="26" r="2.5" fill="white"/>
+            </svg>
+            <span style="color:white;font-weight:800;font-size:22px;letter-spacing:-0.5px;font-family:system-ui,-apple-system,sans-serif">TradeNexus</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — System UI (current)</h3>
+      <p>Matches the app's existing typography. Zero dependencies. Crisp, modern, neutral. Works everywhere.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="font-inter" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-body" style="padding:32px 24px;text-align:center;background:#0f172a">
+          <div style="display:inline-flex;align-items:center;gap:14px">
+            <svg width="36" height="36" viewBox="0 0 52 52" fill="none">
+              <circle cx="26" cy="26" r="20" stroke="#3b82f6" stroke-width="2.5" fill="none"/>
+              <path d="M14 26 A12 12 0 0 1 38 26" stroke="#3b82f6" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+              <path d="M14 26 A12 12 0 0 0 38 26" stroke="#60a5fa" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+              <circle cx="14" cy="26" r="4" fill="#3b82f6"/> <circle cx="38" cy="26" r="4" fill="#60a5fa"/>
+              <circle cx="14" cy="26" r="2" fill="white"/> <circle cx="38" cy="26" r="2" fill="white"/>
+              <circle cx="26" cy="26" r="5" fill="#3b82f6"/> <circle cx="26" cy="26" r="2.5" fill="white"/>
+            </svg>
+            <span style="color:white;font-weight:700;font-size:22px;letter-spacing:-0.5px;font-family:Inter,-apple-system,sans-serif">TradeNexus</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Inter</h3>
+      <p>Most popular SaaS font. Slightly more character than system-ui. Would need to load from Google Fonts CDN.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="font-geometric" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-body" style="padding:32px 24px;text-align:center;background:#0f172a">
+          <div style="display:inline-flex;align-items:center;gap:14px">
+            <svg width="36" height="36" viewBox="0 0 52 52" fill="none">
+              <circle cx="26" cy="26" r="20" stroke="#3b82f6" stroke-width="2.5" fill="none"/>
+              <path d="M14 26 A12 12 0 0 1 38 26" stroke="#3b82f6" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+              <path d="M14 26 A12 12 0 0 0 38 26" stroke="#60a5fa" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+              <circle cx="14" cy="26" r="4" fill="#3b82f6"/> <circle cx="38" cy="26" r="4" fill="#60a5fa"/>
+              <circle cx="14" cy="26" r="2" fill="white"/> <circle cx="38" cy="26" r="2" fill="white"/>
+              <circle cx="26" cy="26" r="5" fill="#3b82f6"/> <circle cx="26" cy="26" r="2.5" fill="white"/>
+            </svg>
+            <span style="color:white;font-weight:800;font-size:22px;letter-spacing:-0.3px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace">TradeNexus</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Monospace (matching terminal aesthetic)</h3>
+      <p>Matches the app's Terminal.tsx vibe and mono font family already in the Tailwind config. Tech-forward, distinctive.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="font-bold-geometric" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-body" style="padding:32px 24px;text-align:center;background:#0f172a">
+          <div style="display:inline-flex;align-items:center;gap:14px">
+            <svg width="36" height="36" viewBox="0 0 52 52" fill="none">
+              <circle cx="26" cy="26" r="20" stroke="#3b82f6" stroke-width="2.5" fill="none"/>
+              <path d="M14 26 A12 12 0 0 1 38 26" stroke="#3b82f6" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+              <path d="M14 26 A12 12 0 0 0 38 26" stroke="#60a5fa" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+              <circle cx="14" cy="26" r="4" fill="#3b82f6"/> <circle cx="38" cy="26" r="4" fill="#60a5fa"/>
+              <circle cx="14" cy="26" r="2" fill="white"/> <circle cx="38" cy="26" r="2" fill="white"/>
+              <circle cx="26" cy="26" r="5" fill="#3b82f6"/> <circle cx="26" cy="26" r="2.5" fill="white"/>
+            </svg>
+            <span style="color:white;font-weight:900;font-size:22px;letter-spacing:-0.5px;font-family:system-ui,-apple-system,sans-serif">
+              Trade<span style="color:#3b82f6">Nexus</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>D — Two-tone wordmark</h3>
+      <p>"Trade" in white, "Nexus" in blue. Visually separates the two concepts. Emphasizes "Nexus" as the differentiator.</p>
+    </div>
+  </div>
+</div>

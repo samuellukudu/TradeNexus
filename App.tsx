@@ -20,7 +20,7 @@ import { LandingPage } from './components/LandingPage';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { Home, LogOut, Plus, UserRound } from 'lucide-react';
+import { Globe2, Home, LogOut, Plus, UserRound } from 'lucide-react';
 
 const INITIAL_LOGS = [
   "TradeNexus AI Agent System v1.0.0 initialized...",
@@ -1294,9 +1294,11 @@ export default function App() {
           </button>
           <a
             href="/tradesight"
-            className="text-xs text-slate-400 hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-lg border border-slate-800 hover:border-indigo-500/50"
+            className="w-12 h-12 rounded-xl flex items-center justify-center text-slate-500 hover:text-indigo-400 hover:bg-slate-900 transition-colors"
+            aria-label="TradeSight"
+            title="TradeSight — Global Trade Analytics"
           >
-            TradeSight
+            <Globe2 className="w-6 h-6" strokeWidth={2.2} />
           </a>
         </div>
 

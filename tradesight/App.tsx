@@ -976,6 +976,13 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4 text-xs text-slate-400">
+            <a
+              href="/"
+              className="text-[11px] text-slate-400 hover:text-indigo-400 transition-colors font-semibold"
+              title="Back to TradeNexus Hub"
+            >
+              ← TradeNexus Hub
+            </a>
             <div className="hidden md:flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 block animate-pulse"></span>
               {t('activeConsultDesk')}

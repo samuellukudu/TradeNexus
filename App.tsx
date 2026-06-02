@@ -1292,6 +1292,12 @@ export default function App() {
           >
             <Plus className="w-6 h-6" strokeWidth={2.2} />
           </button>
+          <a
+            href="/tradesight"
+            className="text-xs text-slate-400 hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-lg border border-slate-800 hover:border-indigo-500/50"
+          >
+            TradeSight
+          </a>
         </div>
 
         <button

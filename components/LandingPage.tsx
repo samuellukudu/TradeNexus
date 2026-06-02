@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, X, Play } from 'lucide-react';
-import { useCases, howItWorksSteps } from './landingData';
+import { useLanguage } from '../i18n';
+import { LanguageToggle } from './LanguageToggle';
+import { useCases, howItWorksStepKeys } from './landingData';
 
 interface LandingPageProps {
   handleEmailAuth: (e: React.FormEvent) => Promise<void>;
@@ -30,6 +32,7 @@ export function LandingPage({
 }: LandingPageProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [expandedRegion, setExpandedRegion] = useState<string | null>(null);
+  const { t } = useLanguage();
 
   const openAuthModal = (isLogin: boolean) => {
     setIsLoginMode(isLogin);
@@ -57,29 +60,30 @@ export function LandingPage({
             </span>
           </button>
           <div className="flex items-center gap-6">
+            <LanguageToggle />
             <button
               onClick={() => scrollTo('how-it-works')}
               className="text-sm font-medium text-slate-400 hover:text-white transition-colors hidden sm:block"
             >
-              How It Works
+              {t('nav.howItWorks')}
             </button>
             <button
               onClick={() => scrollTo('use-cases')}
               className="text-sm font-medium text-slate-400 hover:text-white transition-colors hidden sm:block"
             >
-              Use Cases
+              {t('nav.useCases')}
             </button>
             <button
               onClick={() => openAuthModal(true)}
               className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
             >
-              Sign In
+              {t('nav.signIn')}
             </button>
             <button
               onClick={() => openAuthModal(false)}
               className="text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg transition-all"
             >
-              Get Started
+              {t('nav.getStarted')}
             </button>
           </div>
         </div>
@@ -94,20 +98,20 @@ export function LandingPage({
             {/* Left: Text */}
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs font-semibold mb-6 border border-blue-500/20 tracking-wide">
-                AUTONOMOUS B2B SALES AGENTS
+                {t('landing.hero.badge')}
               </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.06] mb-6">
-                AI Agents That Find Your Next Buyer. 24/7.
+                {t('landing.hero.title')}
               </h1>
               <p className="text-base md:text-lg text-slate-400 max-w-lg mb-8 leading-relaxed">
-                TradeNexus AI autonomously scouts 190+ countries, verifies companies with real data, and fills your pipeline while you sleep.
+                {t('landing.hero.subtitle')}
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={() => openAuthModal(false)}
                   className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-8 rounded-xl transition-all hover:-translate-y-0.5"
                 >
-                  Start Scouting Free
+                  {t('landing.hero.cta')}
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 <button
@@ -115,7 +119,7 @@ export function LandingPage({
                   className="inline-flex items-center justify-center gap-2 bg-slate-800/70 hover:bg-slate-800 text-white font-medium py-3.5 px-8 rounded-xl border border-slate-700 transition-all hover:-translate-y-0.5"
                 >
                   <Play className="w-4 h-4" />
-                  Watch Demo
+                  {t('landing.hero.watchDemo')}
                 </button>
               </div>
             </div>
@@ -126,9 +130,9 @@ export function LandingPage({
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Live Lead Feed</span>
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t('landing.feed.heading')}</span>
                   </div>
-                  <span className="text-[10px] text-slate-600 bg-slate-800 px-2 py-0.5 rounded">Auto-updating</span>
+                  <span className="text-[10px] text-slate-600 bg-slate-800 px-2 py-0.5 rounded">{t('landing.feed.autoUpdating')}</span>
                 </div>
                 <div className="space-y-3">
                   {[
@@ -151,10 +155,10 @@ export function LandingPage({
                   ))}
                 </div>
                 <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
-                  <span>Scouting 190+ countries</span>
+                  <span>{t('landing.feed.scouting')}</span>
                   <span className="flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                    Autonomous mode active
+                    {t('landing.feed.autonomousActive')}
                   </span>
                 </div>
               </div>
@@ -168,21 +172,21 @@ export function LandingPage({
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
-              How It Works
+              {t('landing.howItWorks.heading')}
             </h2>
             <p className="text-slate-400 max-w-lg mx-auto text-base">
-              Three steps from product to pipeline. No manual research required.
+              {t('landing.howItWorks.subtitle')}
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {howItWorksSteps.map((step, i) => (
+            {howItWorksStepKeys.map((step, i) => (
               <div key={i} className="text-center group">
                 <div className="w-14 h-14 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-xl font-bold text-blue-400 group-hover:bg-blue-500/20 transition-colors">
                   {step.number}
                 </div>
-                <h3 className="text-lg font-bold text-white mb-3">{step.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed max-w-xs mx-auto">{step.description}</p>
+                <h3 className="text-lg font-bold text-white mb-3">{t(step.titleKey)}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed max-w-xs mx-auto">{t(step.descriptionKey)}</p>
               </div>
             ))}
           </div>
@@ -194,10 +198,10 @@ export function LandingPage({
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
-              Global Coverage, One Platform
+              {t('landing.useCases.heading')}
             </h2>
             <p className="text-slate-400 max-w-lg mx-auto text-base">
-              AI agents discover verified buyers across every continent. Click a region to see what they find.
+              {t('landing.useCases.subtitle')}
             </p>
           </div>
 
@@ -242,7 +246,7 @@ export function LandingPage({
                   </div>
                   {uc.isRealData && (
                     <span className="ml-auto text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full">
-                      Verified Search Data
+                      {t('landing.useCases.verifiedBadge')}
                     </span>
                   )}
                 </div>
@@ -266,7 +270,7 @@ export function LandingPage({
 
           {!expandedRegion && (
             <p className="text-center text-xs text-slate-600">
-              Click any region tag to expand with real lead data
+              {t('landing.useCases.clickHint')}
             </p>
           )}
         </div>
@@ -276,10 +280,10 @@ export function LandingPage({
       <section id="demo" className="py-24 md:py-32 px-6 bg-slate-900 border-y border-slate-800">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
-            See TradeNexus in Action
+            {t('landing.demo.heading')}
           </h2>
           <p className="text-slate-400 max-w-lg mx-auto text-base mb-12">
-            Watch AI agents discover and verify B2B leads in real time.
+            {t('landing.demo.subtitle')}
           </p>
 
           <div className="relative bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
@@ -294,7 +298,7 @@ export function LandingPage({
           </div>
 
           <p className="text-xs text-slate-600 mt-4">
-            TradeNexus AI autonomously scouting and verifying leads across global markets
+            {t('landing.demo.caption')}
           </p>
         </div>
       </section>
@@ -304,10 +308,10 @@ export function LandingPage({
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
-              Real Results From Real Searches
+              {t('landing.results.heading')}
             </h2>
             <p className="text-slate-400 max-w-lg mx-auto text-base">
-              Every lead shown was discovered by TradeNexus AI. Verified companies, real contact data.
+              {t('landing.results.subtitle')}
             </p>
           </div>
 
@@ -348,16 +352,16 @@ export function LandingPage({
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-blue-600/5 rounded-full blur-[80px] pointer-events-none"></div>
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
-                Ready to find your next buyer?
+                {t('landing.cta.heading')}
               </h2>
               <p className="text-slate-400 max-w-md mx-auto text-base mb-8">
-                Join exporters using TradeNexus AI to discover verified B2B leads in 190+ countries.
+                {t('landing.cta.subtitle')}
               </p>
               <button
                 onClick={() => openAuthModal(false)}
                 className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-10 rounded-xl transition-all hover:-translate-y-0.5 text-base"
               >
-                Start Scouting Free
+                {t('landing.cta.button')}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -377,8 +381,8 @@ export function LandingPage({
             </span>
           </div>
           <div className="flex items-center gap-6 text-xs text-slate-500">
-            <a href="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
-            <a href="/terms" className="hover:text-slate-300 transition-colors">Terms of Service</a>
+            <a href="/privacy" className="hover:text-slate-300 transition-colors">{t('landing.footer.privacy')}</a>
+            <a href="/terms" className="hover:text-slate-300 transition-colors">{t('landing.footer.terms')}</a>
           </div>
         </div>
       </footer>
@@ -411,10 +415,10 @@ export function LandingPage({
                     <span className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></span>
                   </div>
                   <h2 className="text-2xl font-bold text-white mb-2">
-                    {isLoginMode ? 'Welcome back' : 'Create an account'}
+                    {isLoginMode ? t('auth.welcomeBack') : t('auth.createAccount')}
                   </h2>
                   <p className="text-sm text-slate-400">
-                    {isLoginMode ? 'Sign in to access your autonomous sales agents.' : 'Start scouting global markets today.'}
+                    {isLoginMode ? t('auth.signInPrompt') : t('auth.registerPrompt')}
                   </p>
                 </div>
 
@@ -428,12 +432,12 @@ export function LandingPage({
                     <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
                     <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
                   </svg>
-                  Sign in with Google
+                  {t('auth.googleSignIn')}
                 </button>
 
                 <div className="w-full flex items-center justify-between mb-6">
                   <div className="h-px bg-slate-800 flex-1"></div>
-                  <span className="text-slate-500 text-xs px-4 font-mono">OR</span>
+                  <span className="text-slate-500 text-xs px-4 font-mono">{t('auth.or')}</span>
                   <div className="h-px bg-slate-800 flex-1"></div>
                 </div>
 
@@ -441,10 +445,10 @@ export function LandingPage({
                   {authError && <div className="text-red-400 text-sm bg-red-400/10 p-3 rounded-lg border border-red-400/20">{authError}</div>}
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Email</label>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">{t('auth.email')}</label>
                     <input
                       type="email"
-                      placeholder="you@company.com"
+                      placeholder={t('auth.emailPlaceholder')}
                       className="w-full bg-slate-950 border border-slate-800 text-sm rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -453,10 +457,10 @@ export function LandingPage({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Password</label>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">{t('auth.password')}</label>
                     <input
                       type="password"
-                      placeholder="········"
+                      placeholder={t('auth.passwordPlaceholder')}
                       className="w-full bg-slate-950 border border-slate-800 text-sm rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -469,7 +473,7 @@ export function LandingPage({
                     disabled={isSubmitting}
                     className="w-full bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-white font-medium py-3 px-4 rounded-xl shadow-md transition-all flex justify-center items-center gap-3 disabled:opacity-50 mt-2"
                   >
-                    {isSubmitting ? 'Processing...' : (isLoginMode ? 'Sign In with Email' : 'Create Account')}
+                    {isSubmitting ? t('auth.processing') : (isLoginMode ? t('auth.signInWithEmail') : t('auth.createAccountBtn'))}
                   </button>
 
                   <div className="text-center mt-2">
@@ -478,7 +482,7 @@ export function LandingPage({
                       onClick={() => setIsLoginMode(!isLoginMode)}
                       className="text-xs text-slate-400 hover:text-white transition-colors underline underline-offset-2"
                     >
-                      {isLoginMode ? "Need an account? Register" : "Already have an account? Sign in"}
+                      {isLoginMode ? t('auth.needAccount') : t('auth.alreadyHaveAccount')}
                     </button>
                   </div>
                 </form>

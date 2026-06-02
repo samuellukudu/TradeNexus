@@ -1,6 +1,8 @@
 // Real lead data extracted from TradeNexus AI CSV exports.
 // Three datasets are from actual search sessions; four are representative examples.
 
+import type { Translations } from '../i18n/en';
+
 export interface ShowcaseLead {
   companyName: string;
   matchScore: string;
@@ -111,20 +113,26 @@ export const useCases: UseCase[] = [
   },
 ];
 
-export const howItWorksSteps = [
+interface HowItWorksStepKey {
+  number: number;
+  titleKey: keyof Translations;
+  descriptionKey: keyof Translations;
+}
+
+export const howItWorksStepKeys: HowItWorksStepKey[] = [
   {
     number: 1,
-    title: "Describe Your Product",
-    description: "Upload a spec sheet or write a description. Our AI extracts everything it needs to know.",
+    titleKey: 'landing.steps.1.title',
+    descriptionKey: 'landing.steps.1.description',
   },
   {
     number: 2,
-    title: "AI Scouts Global Markets",
-    description: "Autonomous agents search 190+ countries, find buyers matching your ideal profile, and verify their details.",
+    titleKey: 'landing.steps.2.title',
+    descriptionKey: 'landing.steps.2.description',
   },
   {
     number: 3,
-    title: "Contact and Close",
-    description: "Get verified emails, phone numbers, and AI-generated outreach messages. Start selling immediately.",
+    titleKey: 'landing.steps.3.title',
+    descriptionKey: 'landing.steps.3.description',
   },
 ];

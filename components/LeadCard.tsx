@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Lead, LeadStatus } from '../types';
+import { useLanguage } from '../i18n';
 
 interface LeadCardProps {
   lead: Lead;
@@ -35,6 +36,7 @@ const getVectorColor = (vectorName?: string) => {
 };
 
 export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, isActive }) => {
+  const { t } = useLanguage();
   const vectorClass = getVectorColor(lead.searchVector);
 
   return (
@@ -57,7 +59,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, isActive }) =
         <div className="flex items-center gap-1 shrink-0">
           {lead.socialOrigin?.originType === 'social-first' && (
               <span className="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-800 px-1.5 py-0.5 rounded flex items-center gap-1" title="Social-first lead">
-                  Social
+                  {t('lead.social')}
               </span>
           )}
           {!lead.website && (
@@ -95,7 +97,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, isActive }) =
       </div>
       
       <p className="text-slate-400 text-sm mb-3 line-clamp-2">
-        {lead.summary || "No summary available."}
+        {lead.summary || t('lead.noSummary')}
       </p>
 
       <div className="flex items-center justify-between text-xs text-slate-500">
@@ -103,7 +105,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, isActive }) =
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             {lead.region}
         </div>
-        <div className="flex items-center gap-1" title="AI Match Confidence">
+        <div className="flex items-center gap-1" title={t('lead.confidence')}>
             <svg className="w-4 h-4 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
             {lead.confidenceScore}%
         </div>

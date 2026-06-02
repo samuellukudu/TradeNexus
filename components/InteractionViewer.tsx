@@ -2,6 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Lead, StrategicContext, ChatMessage, LeadStatus } from '../types';
+import { useLanguage } from '../i18n';
 import { generateProspectingMessage } from '../services/geminiService';
 import { discoverSocialForCompany, discoverLeadsFromSocial } from '../services/agent/socialDiscoveryService';
 import type { SocialProfileEvidence } from '../types/evidenceTypes';
@@ -34,6 +35,8 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
   const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
   const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
   const [outreachError, setOutreachError] = useState<string | null>(null);
+
+  const { t } = useLanguage();
 
   const handleStatusChange = (newStatus: LeadStatus) => {
       if (onUpdateLead) {
@@ -126,14 +129,14 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                       </>
                     )}
                     <span className="text-slate-500">•</span>
-                    <span>Confidence Match: <span className="text-primary-400 font-bold">{lead.confidenceScore}%</span></span>
+                    <span>{t('viewer.confidenceMatch')}: <span className="text-primary-400 font-bold">{lead.confidenceScore}%</span></span>
                 </div>
             </div>
             <div className="flex flex-wrap gap-2">
                  {lead.sourceUrl && (
                      <a href={lead.sourceUrl} target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-green-900/50 hover:bg-green-900/80 border border-green-700/50 rounded text-xs font-medium text-green-400 transition-colors flex items-center gap-1" title="Verified via Search Grounding">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        Verified Source
+                        {t('viewer.verifiedSource')}
                      </a>
                  )}
                  {lead.website && (
@@ -286,19 +289,19 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                         onClick={() => setActiveTab('dossier')}
                         className={`text-xs font-bold uppercase tracking-wider pb-1 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'dossier' ? 'text-primary-400 border-primary-500' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
                     >
-                        Intelligence Dossier
+                        {t('viewer.tab.companyDossier')}
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('logs')}
                         className={`text-xs font-bold uppercase tracking-wider pb-1 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'logs' ? 'text-primary-400 border-primary-500' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
                     >
-                        Discovery Logs
+                        {t('viewer.tab.activityLog')}
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('chat')}
                         className={`text-xs font-bold uppercase tracking-wider pb-1 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'chat' ? 'text-primary-400 border-primary-500' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
                     >
-                        Prospecting Assistant
+                        {t('viewer.tab.aiChat')}
                     </button>
                  </div>
 
@@ -622,7 +625,7 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                               disabled={isVerifying}
                               className="px-2 py-1 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-600/30 rounded text-[10px] text-purple-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              {isVerifying ? 'Verifying...' : 'Verify Lead'}
+                              {isVerifying ? 'Verifying...' : t('viewer.verifyLead')}
                             </button>
                           </div>
 
@@ -691,7 +694,7 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                               disabled={isScoring}
                               className="px-2 py-1 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-600/30 rounded text-[10px] text-amber-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              {isScoring ? 'Scoring...' : 'Score Lead'}
+                              {isScoring ? 'Scoring...' : t('viewer.scoreLead')}
                             </button>
                           </div>
 
@@ -763,7 +766,7 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                               disabled={isGettingRecommendations}
                               className="px-2 py-1 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-600/30 rounded text-[10px] text-cyan-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              {isGettingRecommendations ? 'Analyzing...' : 'Get Recommendations'}
+                              {isGettingRecommendations ? 'Analyzing...' : t('viewer.getRecommendations')}
                             </button>
                           </div>
 
@@ -849,7 +852,7 @@ export const InteractionViewer: React.FC<InteractionViewerProps> = ({ lead, prod
                                   disabled={isGeneratingDraft}
                                   className="px-2 py-1 bg-pink-600/20 hover:bg-pink-600/40 border border-pink-600/30 rounded text-[10px] text-pink-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  {isGeneratingDraft ? 'Drafting...' : 'Generate Draft'}
+                                  {isGeneratingDraft ? 'Drafting...' : t('viewer.generateDraft')}
                                 </button>
                               )}
                             </div>

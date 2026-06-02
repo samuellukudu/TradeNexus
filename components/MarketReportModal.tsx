@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MarketReport, StatPoint } from '../types';
+import { useLanguage } from '../i18n';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -20,9 +21,10 @@ const HorizontalBarChart = ({
     colorClass: string, 
     valueFormatter?: (val: number) => string 
 }) => {
-    if (!data || data.length === 0) return <div className="text-slate-500 text-xs italic">No data available</div>;
+    const { t } = useLanguage();
+    if (!data || data.length === 0) return <div className="text-slate-500 text-xs italic">{t('report.noData')}</div>;
     const max = Math.max(...data.map(d => d.value));
-    
+
     return (
         <div className="space-y-3">
             {data.map((d, i) => (
@@ -53,7 +55,8 @@ const VerticalBarChart = ({
     colorClass: string,
     valueFormatter?: (val: number) => string
 }) => {
-    if (!data || data.length === 0) return <div className="text-slate-500 text-xs italic">No data available</div>;
+    const { t } = useLanguage();
+    if (!data || data.length === 0) return <div className="text-slate-500 text-xs italic">{t('report.noData')}</div>;
     const max = Math.max(...data.map(d => d.value));
 
     return (
@@ -101,6 +104,7 @@ const formatLabel = (key: string) => {
 };
 
 export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, onClose, report, region }) => {
+  const { t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
 
   if (!isOpen || !report) return null;
@@ -196,15 +200,15 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
             {/* Executive Metrics Grid */}
             <div className="grid grid-cols-3 gap-6 mb-10">
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded">
-                    <div className="text-xs font-bold text-slate-500 uppercase mb-1">HS Code Strategy</div>
+                    <div className="text-xs font-bold text-slate-500 uppercase mb-1">{t('report.hsCode')}</div>
                     <div className="text-xl font-mono font-bold text-slate-900 leading-tight">{hsCodeText}</div>
                 </div>
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded">
-                    <div className="text-xs font-bold text-slate-500 uppercase mb-1">Import Duty</div>
+                    <div className="text-xs font-bold text-slate-500 uppercase mb-1">{t('report.importDuty')}</div>
                     <div className="text-xl font-mono font-bold text-slate-900 leading-tight">{importDutyText}</div>
                 </div>
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded">
-                    <div className="text-xs font-bold text-slate-500 uppercase mb-1">Shipping Time</div>
+                    <div className="text-xs font-bold text-slate-500 uppercase mb-1">{t('report.shippingTime')}</div>
                     <div className="text-xl font-mono font-bold text-slate-900 leading-tight">{shippingTimeText}</div>
                 </div>
             </div>
@@ -214,7 +218,7 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
                 {/* Left Column */}
                 <div className="space-y-8">
                     <section>
-                        <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">Market Overview</h3>
+                        <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">{t('report.marketOverview')}</h3>
                         <p className="text-sm leading-relaxed text-slate-800 text-justify whitespace-pre-line">{overviewText}</p>
                     </section>
                      {/* STATS: GROWTH */}
@@ -233,7 +237,7 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
                         </section>
                     )}
                     <section>
-                        <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">Price Structure</h3>
+                        <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">{t('report.priceStructure')}</h3>
                         <div className="p-3 bg-slate-50 rounded border border-slate-200 text-sm font-mono text-slate-800 whitespace-pre-wrap">
                             {priceStructureText}
                         </div>
@@ -279,7 +283,7 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
                     </section>
 
                     <section>
-                        <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">Compliance & Regulations</h3>
+                        <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">{t('report.compliance')}</h3>
                         <p className="text-sm leading-relaxed text-slate-800 text-justify whitespace-pre-line">{regulationsText}</p>
                     </section>
                 </div>
@@ -288,7 +292,7 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
             {/* Secondary Rows */}
             <div className="grid grid-cols-2 gap-10 mt-8">
                 <section>
-                    <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">Localization Requirements</h3>
+                    <h3 className="text-sm font-bold text-primary-700 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">{t('report.localization')}</h3>
                     <p className="text-sm leading-relaxed text-slate-800 whitespace-pre-line">{localizationText}</p>
                 </section>
                 <section>
@@ -350,7 +354,7 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
                 ) : (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 )}
-                Export PDF
+                {t('report.exportPDF')}
              </button>
              <button onClick={onClose} className="p-2 hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-white">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -362,17 +366,17 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-900 p-4 md:p-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-lg">
-                    <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">HS Code Strategy</h4>
+                    <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">{t('report.hsCode')}</h4>
                     <div className="text-xl md:text-2xl font-mono text-white font-bold">{hsCodeText}</div>
                     <p className="text-xs text-slate-400 mt-1">Customs Classification Advice</p>
                 </div>
                 <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-lg">
-                    <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Est. Import Duty</h4>
+                    <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Est. {t('report.importDuty')}</h4>
                     <div className="text-xl md:text-2xl font-mono text-yellow-400 font-bold">{importDutyText}</div>
                     <p className="text-xs text-slate-400 mt-1">Impact on Margins</p>
                 </div>
                 <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-lg">
-                    <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Shipping Time</h4>
+                    <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">{t('report.shippingTime')}</h4>
                     <div className="text-xl md:text-2xl font-mono text-blue-400 font-bold">{shippingTimeText}</div>
                     <p className="text-xs text-slate-400 mt-1">Estimated Sea Freight Duration</p>
                 </div>
@@ -381,7 +385,7 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-8">
                 <section>
-                  <h3 className="text-primary-400 font-bold uppercase tracking-wider text-sm mb-3 border-b border-primary-900/50 pb-1">Market Overview</h3>
+                  <h3 className="text-primary-400 font-bold uppercase tracking-wider text-sm mb-3 border-b border-primary-900/50 pb-1">{t('report.marketOverview')}</h3>
                   <p className="text-slate-300 leading-relaxed text-sm whitespace-pre-line">{overviewText}</p>
                 </section>
                 
@@ -475,7 +479,7 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
         {/* Footer */}
         <div className="p-4 border-t border-slate-700 bg-slate-800 flex justify-end">
            <button onClick={onClose} className="w-full md:w-auto px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm transition-colors">
-             Close Report
+             {t('report.close')}
            </button>
         </div>
       </div>

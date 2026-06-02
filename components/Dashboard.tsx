@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Lead, LeadStatus, SearchSession } from '../types';
+import { useLanguage } from '../i18n';
 
 interface DashboardProps {
   sessions: SearchSession[];
@@ -8,6 +9,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilot, onDeleteSession }) => {
+  const { t } = useLanguage();
   const [filterSessionId, setFilterSessionId] = useState<string>('ALL');
   const [filterRegion, setFilterRegion] = useState<string>('ALL');
   const [pendingAutoPilotSession, setPendingAutoPilotSession] = useState<string | null>(null);
@@ -221,25 +223,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
               <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-md w-full p-6 shadow-2xl">
                   <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
                       <span className="w-3 h-3 bg-primary-500 rounded-full animate-pulse"></span>
-                      Enable Auto-Pilot?
+                      {t('dashboard.enableAutoPilotTitle')}
                   </h3>
                   <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                      This will authorize the AI Agent to run <strong>automated background searches</strong> every 60 seconds to find new leads for this campaign.
-                      <br/><br/>
-                      <span className="text-yellow-500 text-xs uppercase font-bold tracking-wide">Note:</span> This process consumes API resources.
+                      {t('dashboard.enableAutoPilotDesc')}
                   </p>
                   <div className="flex justify-end gap-3">
-                      <button 
+                      <button
                           onClick={() => setPendingAutoPilotSession(null)}
                           className="px-4 py-2 rounded text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
                       >
-                          Cancel
+                          {t('dashboard.cancel')}
                       </button>
                       <button 
                           onClick={confirmEnableAutoPilot}
                           className="px-4 py-2 rounded text-sm font-bold bg-primary-600 hover:bg-primary-500 text-white shadow-lg shadow-primary-900/20 transition-all"
                       >
-                          Confirm & Enable
+                          {t('dashboard.confirmEnable')}
                       </button>
                   </div>
               </div>
@@ -252,23 +252,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
               <div className="bg-slate-900 border border-slate-700 rounded-lg max-w-md w-full p-6 shadow-2xl">
                   <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
                       <span className="text-red-500">⚠️</span>
-                      Delete Campaign?
+                      {t('dashboard.deleteCampaignTitle')}
                   </h3>
                   <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                      Are you sure you want to delete this campaign and all its collected leads? This action cannot be undone.
+                      {t('dashboard.deleteCampaignDesc')}
                   </p>
                   <div className="flex justify-end gap-3">
-                      <button 
+                      <button
                           onClick={() => setPendingDeleteSession(null)}
                           className="px-4 py-2 rounded text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
                       >
-                          Cancel
+                          {t('dashboard.cancel')}
                       </button>
                       <button 
                           onClick={confirmDeleteSession}
                           className="px-4 py-2 rounded text-sm font-bold bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/20 transition-all"
                       >
-                          Delete Permanently
+                          {t('dashboard.deletePermanently')}
                       </button>
                   </div>
               </div>
@@ -280,9 +280,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
           <div>
             <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                 <svg className="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                Agency Delivery Hub
+                {t('dashboard.heading')}
             </h2>
-            <p className="text-slate-400 text-sm mt-1">Manage client projects and export verified lead lists.</p>
+            <p className="text-slate-400 text-sm mt-1">{t('dashboard.subtitle')}</p>
           </div>
           
           <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto bg-slate-900/50 p-2 rounded-lg border border-slate-800">
@@ -295,7 +295,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
                 }}
                 className="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500 flex-grow xl:w-64"
               >
-                  <option value="ALL">All Client Projects ({sessions.length})</option>
+                  <option value="ALL">{t('dashboard.allProjects')} ({sessions.length})</option>
                   {sessions.map(s => (
                       <option key={s.id} value={s.id}>
                           {s.name} ({new Date(s.createdAt).toLocaleDateString()})
@@ -309,7 +309,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
                 onChange={(e) => setFilterRegion(e.target.value)}
                 className="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500 flex-grow xl:w-48"
               >
-                  <option value="ALL">All Regions</option>
+                  <option value="ALL">{t('dashboard.allRegions')}</option>
                   {availableRegions.map(r => (
                       <option key={r} value={r}>{r}</option>
                   ))}
@@ -320,7 +320,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
                   <div className="flex items-center gap-2">
                       <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded px-3 py-1.5">
                           <span className={`w-2 h-2 rounded-full ${activeSession.isAutoPilotEnabled ? 'bg-green-500 animate-pulse' : 'bg-slate-500'}`}></span>
-                          <span className="text-xs font-bold text-slate-300">Auto-Pilot</span>
+                          <span className="text-xs font-bold text-slate-300">{t('dashboard.autoPilot')}</span>
                           <button 
                               onClick={() => handleToggleClick(activeSession.id, activeSession.isAutoPilotEnabled)}
                               className={`ml-1 w-8 h-4 rounded-full transition-colors relative ${activeSession.isAutoPilotEnabled ? 'bg-primary-600' : 'bg-slate-600'}`}
@@ -333,7 +333,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
                       <button 
                           onClick={() => setPendingDeleteSession(activeSession.id)}
                           className="p-2 bg-red-900/20 hover:bg-red-900/40 border border-red-900/50 text-red-400 rounded transition-colors"
-                          title="Delete Campaign"
+                          title={t('dashboard.deleteCampaign')}
                       >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       </button>
@@ -352,7 +352,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
                       ) : (
                           <>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                            Copy to Excel
+                            {t('dashboard.copyToExcel')}
                           </>
                       )}
                   </button>
@@ -362,7 +362,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
                       className="px-3 py-2 bg-primary-700 hover:bg-primary-600 text-white rounded text-xs font-bold transition-colors disabled:opacity-50 disabled:bg-slate-700 flex items-center gap-2 shadow-lg shadow-primary-900/20"
                   >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                      Download CSV
+                      {t('dashboard.downloadCSV')}
                   </button>
               </div>
           </div>
@@ -371,19 +371,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg">
-              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Total Leads</div>
+              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">{t('dashboard.totalLeads')}</div>
               <div className="text-2xl font-mono text-white">{totalLeads}</div>
           </div>
           <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg">
-              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">In Negotiation</div>
+              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">{t('dashboard.inNegotiation')}</div>
               <div className="text-2xl font-mono text-yellow-400">{activeNegotiations}</div>
           </div>
           <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg">
-              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Closed Won</div>
+              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">{t('dashboard.closedWon')}</div>
               <div className="text-2xl font-mono text-green-400">{confirmedOrders}</div>
           </div>
           <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg">
-              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Conversion Rate</div>
+              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">{t('dashboard.conversionRate')}</div>
               <div className="text-2xl font-mono text-blue-400">{conversionRate}%</div>
           </div>
       </div>
@@ -391,11 +391,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
       {/* Activity Log */}
       <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
           <div className="p-4 border-b border-slate-800 bg-slate-800/50">
-              <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Recent System Activity</h3>
+              <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">{t('dashboard.recentActivity')}</h3>
           </div>
           <div className="divide-y divide-slate-800">
               {allLogs.length === 0 ? (
-                  <div className="p-8 text-center text-slate-600 text-sm">No recent activity found.</div>
+                  <div className="p-8 text-center text-slate-600 text-sm">{t('dashboard.noActivity')}</div>
               ) : (
                   allLogs.map((log, idx) => (
                       <div key={idx} className="p-3 flex items-start gap-3 hover:bg-slate-800/30 transition-colors">

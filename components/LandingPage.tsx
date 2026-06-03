@@ -44,10 +44,10 @@ export function LandingPage({
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white overflow-x-hidden">
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
@@ -67,7 +67,7 @@ export function LandingPage({
               TradeNexus <span className="text-blue-500">AI</span>
             </span>
           </button>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 sm:gap-6">
             <LanguageToggle />
             <button
               onClick={() => scrollTo('how-it-works')}
@@ -83,13 +83,13 @@ export function LandingPage({
             </button>
             <button
               onClick={() => openAuthModal(true)}
-              className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+              className="text-sm font-medium text-slate-300 hover:text-white transition-colors hidden sm:block"
             >
               {t('nav.signIn')}
             </button>
             <button
               onClick={() => openAuthModal(false)}
-              className="text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg transition-all"
+              className="text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white px-3 sm:px-5 py-2 rounded-lg transition-all whitespace-nowrap"
             >
               {t('nav.getStarted')}
             </button>
@@ -98,33 +98,33 @@ export function LandingPage({
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 px-6 overflow-hidden">
+      <section className="relative pt-28 pb-16 md:pt-40 md:pb-28 px-4 sm:px-6 overflow-hidden">
         <div className="absolute top-1/3 right-0 w-[600px] h-[600px] bg-blue-900/10 rounded-full blur-[120px] opacity-40 pointer-events-none"></div>
 
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
             {/* Left: Text */}
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs font-semibold mb-6 border border-blue-500/20 tracking-wide">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs font-semibold mb-6 border border-blue-500/20 tracking-wide max-w-full">
                 {t('landing.hero.badge')}
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.06] mb-6">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.06] mb-5">
                 {t('landing.hero.title')}
               </h1>
-              <p className="text-base md:text-lg text-slate-400 max-w-lg mb-8 leading-relaxed">
+              <p className="text-sm md:text-base lg:text-lg text-slate-400 max-w-lg mb-8 leading-relaxed">
                 {t('landing.hero.subtitle')}
               </p>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col gap-3">
                 <button
                   onClick={() => openAuthModal(false)}
-                  className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-8 rounded-xl transition-all hover:-translate-y-0.5"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-8 rounded-xl transition-all hover:-translate-y-0.5"
                 >
                   {t('landing.hero.cta')}
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => scrollTo('demo')}
-                  className="inline-flex items-center justify-center gap-2 bg-slate-800/70 hover:bg-slate-800 text-white font-medium py-3.5 px-8 rounded-xl border border-slate-700 transition-all hover:-translate-y-0.5"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-800/70 hover:bg-slate-800 text-white font-medium py-3.5 px-8 rounded-xl border border-slate-700 transition-all hover:-translate-y-0.5"
                 >
                   <Play className="w-4 h-4" />
                   {t('landing.hero.watchDemo')}
@@ -134,7 +134,7 @@ export function LandingPage({
 
             {/* Right: Live Lead Preview */}
             <div className="relative">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl overflow-hidden">
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
@@ -148,13 +148,13 @@ export function LandingPage({
                     { icon: "☀️", name: "Desert Technologies", cat: "Solar Panels", score: "85%", detail: "PV manufacturer, Jeddah" },
                     { icon: "❄️", name: "Kooline Air Conditioning", cat: "HVAC Systems", score: "85%", detail: "Est. 1975, Suva Fiji" },
                   ].map((lead, i) => (
-                    <div key={i} className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3.5 flex items-center gap-3.5 hover:border-slate-600/50 transition-colors">
-                      <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-lg shrink-0">
+                    <div key={i} className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3.5 flex items-center gap-3 hover:border-slate-600/50 transition-colors">
+                      <div className="w-9 h-9 bg-slate-900 rounded-lg flex items-center justify-center text-base shrink-0">
                         {lead.icon}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-white truncate">{lead.name}</div>
-                        <div className="text-xs text-slate-400">{lead.cat} · {lead.detail}</div>
+                        <div className="text-xs text-slate-400 truncate">{lead.cat} · {lead.detail}</div>
                       </div>
                       <div className="text-xs font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-md shrink-0">
                         {lead.score}
@@ -162,11 +162,11 @@ export function LandingPage({
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
-                  <span>{t('landing.feed.scouting')}</span>
-                  <span className="flex items-center gap-1">
+                <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500 gap-2 min-w-0">
+                  <span className="truncate">{t('landing.feed.scouting')}</span>
+                  <span className="flex items-center gap-1 shrink-0">
                     <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                    {t('landing.feed.autonomousActive')}
+                    <span className="whitespace-nowrap">{t('landing.feed.autonomousActive')}</span>
                   </span>
                 </div>
               </div>
@@ -176,7 +176,7 @@ export function LandingPage({
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-24 md:py-32 px-6 bg-slate-900 border-y border-slate-800">
+      <section id="how-it-works" className="py-16 md:py-32 px-4 sm:px-6 bg-slate-900 border-y border-slate-800">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
@@ -202,7 +202,7 @@ export function LandingPage({
       </section>
 
       {/* Interactive Globe / Use Cases */}
-      <section id="use-cases" className="py-24 md:py-32 px-6">
+      <section id="use-cases" className="py-16 md:py-32 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
@@ -285,7 +285,7 @@ export function LandingPage({
       </section>
 
       {/* Demo Video */}
-      <section id="demo" className="py-24 md:py-32 px-6 bg-slate-900 border-y border-slate-800">
+      <section id="demo" className="py-16 md:py-32 px-4 sm:px-6 bg-slate-900 border-y border-slate-800">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
             {t('landing.demo.heading')}
@@ -297,7 +297,7 @@ export function LandingPage({
           <div className="relative bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
             <video
               src="/demo.mp4"
-              className="w-full aspect-[9/16] md:aspect-video object-cover"
+              className="w-full aspect-video object-cover"
               controls
               preload="metadata"
             >
@@ -312,7 +312,7 @@ export function LandingPage({
       </section>
 
       {/* Real Results */}
-      <section className="py-24 md:py-32 px-6">
+      <section className="py-16 md:py-32 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
@@ -354,9 +354,9 @@ export function LandingPage({
       </section>
 
       {/* CTA */}
-      <section className="py-24 md:py-32 px-6">
+      <section className="py-16 md:py-32 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600/10 via-blue-900/5 to-indigo-900/10 border border-blue-500/15 p-12 md:p-16 text-center">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600/10 via-blue-900/5 to-indigo-900/10 border border-blue-500/15 p-8 sm:p-12 md:p-16 text-center">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-blue-600/5 rounded-full blur-[80px] pointer-events-none"></div>
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
@@ -378,7 +378,7 @@ export function LandingPage({
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-slate-900 bg-slate-950">
+      <footer className="py-8 px-4 sm:px-6 border-t border-slate-900 bg-slate-950">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700">

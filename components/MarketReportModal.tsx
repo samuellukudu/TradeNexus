@@ -462,9 +462,9 @@ export const MarketReportModal: React.FC<MarketReportModalProps> = ({ isOpen, on
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {report.sources.map((source, idx) => (
-                            <a key={idx} href={source.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-slate-400 hover:text-primary-400 transition-colors p-2 bg-slate-800/50 rounded border border-slate-700/50 hover:border-slate-600 group">
+                            <a key={idx} href={source.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-slate-400 hover:text-primary-400 transition-colors p-2 bg-slate-800/50 rounded border border-slate-700/50 hover:border-slate-600 group min-w-0">
                                 <span className="bg-slate-700 text-slate-300 w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold shrink-0 group-hover:bg-primary-900 group-hover:text-primary-300 transition-colors">{idx + 1}</span>
-                                <div className="flex-1 truncate">
+                                <div className="flex-1 min-w-0">
                                     <div className="truncate font-medium text-slate-300 group-hover:text-primary-300">{source.title}</div>
                                     <div className="truncate text-[10px] opacity-60">{source.url}</div>
                                 </div>

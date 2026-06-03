@@ -104,7 +104,7 @@ export function LandingPage({
         <div className="max-w-7xl mx-auto w-full">
           <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
             {/* Left: Text */}
-            <div>
+            <div className="min-w-0">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs font-semibold mb-6 border border-blue-500/20 tracking-wide max-w-full">
                 {t('landing.hero.badge')}
               </div>
@@ -133,10 +133,10 @@ export function LandingPage({
             </div>
 
             {/* Right: Live Lead Preview */}
-            <div className="relative">
+            <div className="relative min-w-0">
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl overflow-hidden">
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                     <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t('landing.feed.heading')}</span>
                   </div>

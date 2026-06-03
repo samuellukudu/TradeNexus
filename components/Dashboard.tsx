@@ -403,14 +403,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, onToggleAutoPilo
                               {log.timestamp}
                           </span>
                           <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-0.5">
-                                  <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                              <div className="flex items-center gap-2 mb-0.5 min-w-0">
+                                  <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0 ${
                                       log.actor === 'AGENT' ? 'bg-primary-900/30 text-primary-400' : 
                                       log.actor === 'SYSTEM' ? 'bg-slate-800 text-slate-400' : 'bg-green-900/30 text-green-400'
                                   }`}>
                                       {log.actor}
                                   </span>
-                                  <span className="text-xs font-bold text-slate-300 truncate">{log.companyName}</span>
+                                  <span className="text-xs font-bold text-slate-300 truncate min-w-0">{log.companyName}</span>
                               </div>
                               <p className="text-xs text-slate-400 leading-relaxed break-words">{log.message}</p>
                           </div>

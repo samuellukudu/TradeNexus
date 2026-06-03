@@ -1,1 +1,167 @@
 /* TradeNexus custom styles — loaded as external stylesheet to avoid FOUC */
+
+/* 1. Global Custom Font and Render Optimizations */
+h1, h2, h3, h4, .font-heading {
+  font-family: 'Outfit', sans-serif !important;
+}
+
+/* 2. Seamless Scrolling Market Pulse Ticker */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee 25s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* 3. Tech Grid Backgrounds & Gradient Radial Masks */
+.bg-grid-pattern {
+  background-size: 50px 50px;
+  background-image: 
+    linear-gradient(to right, rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+}
+
+.radial-mask-center {
+  mask-image: radial-gradient(circle at center, black 40%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 80%);
+}
+
+.radial-mask-hero {
+  background: radial-gradient(circle at 50% 30%, rgba(37, 99, 235, 0.15) 0%, rgba(2, 6, 23, 0) 70%);
+}
+
+/* 4. Glassmorphic Panel Design System */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-panel:hover {
+  border-color: rgba(59, 130, 246, 0.25);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 15px -5px rgba(59, 130, 246, 0.1);
+}
+
+.glass-panel-heavy {
+  background: rgba(8, 12, 24, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 5. Glowing Neon Overlays & Accents */
+.glow-cyan {
+  box-shadow: 0 0 30px -5px rgba(6, 182, 212, 0.25);
+}
+
+.glow-blue {
+  box-shadow: 0 0 35px -5px rgba(59, 130, 246, 0.3);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 30px -5px rgba(16, 185, 129, 0.25);
+}
+
+.glow-orange {
+  box-shadow: 0 0 30px -5px rgba(249, 115, 22, 0.25);
+}
+
+/* Glowing text effects */
+.neon-text-cyan {
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+}
+
+.neon-text-blue {
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+/* 6. Pulsing Hotspot Ripple Animation */
+@keyframes hotspot-ripple {
+  0% {
+    transform: scale(0.9) translate(-50%, -50%);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.8) translate(-50%, -50%);
+    opacity: 0;
+  }
+}
+
+.hotspot-pulse::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: currentColor;
+  animation: hotspot-ripple 2s infinite cubic-bezier(0.1, 0.8, 0.3, 1);
+  pointer-events: none;
+}
+
+/* 7. Central AI Node Glowing Spinners */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-reverse-slow {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.animate-spin-reverse-slow {
+  animation: spin-reverse-slow 25s linear infinite;
+}
+
+/* 8. Pulsating Energy Beam (Animated Dashed SVG paths) */
+@keyframes dash {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+.energy-line {
+  stroke-dasharray: 8 6;
+  animation: dash 1.5s linear infinite;
+}
+
+/* 9. Card Scan Sweep Animation */
+@keyframes scan-sweep {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.scan-line {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.8), transparent);
+  box-shadow: 0 0 12px 3px rgba(6, 182, 212, 0.6);
+  animation: scan-sweep 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}

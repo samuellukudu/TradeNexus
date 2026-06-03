@@ -325,19 +325,19 @@ export function LandingPage({
 
           <div className="grid md:grid-cols-3 gap-6">
             {useCases.filter(uc => uc.isRealData).map((uc) => (
-              <div key={uc.country} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition-colors">
+              <div key={uc.country} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition-colors min-w-0">
                 <div className="flex items-center gap-3 mb-4">
                   <span className="text-2xl">{uc.flag}</span>
-                  <div>
-                    <h3 className="font-bold text-white">{uc.country}</h3>
-                    <p className="text-xs text-slate-500">{uc.product}</p>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-white truncate">{uc.country}</h3>
+                    <p className="text-xs text-slate-500 truncate">{uc.product}</p>
                   </div>
                 </div>
                 <p className="text-sm text-slate-400 mb-5 leading-relaxed">{uc.context}</p>
                 <div className="space-y-2.5">
                   {uc.leads.map((lead, i) => (
                     <div key={i} className="bg-slate-800/50 border border-slate-700/30 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium text-white truncate">{lead.companyName}</div>
                         <div className="text-xs text-slate-500 truncate">{lead.detail}</div>
                       </div>

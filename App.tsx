@@ -173,6 +173,7 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [authError, setAuthError] = useState('');
+  const [apiError, setApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { t, language } = useLanguage();
@@ -565,6 +566,7 @@ export default function App() {
           } catch (e) {
               console.error("Auto-pilot error", e);
               addAgentLog(`[Auto-Pilot] Error during scout cycle: ${e}`);
+              if (isApiAuthError(e)) setApiError(String(e));
           } finally {
               isAutoPilotRunningRef.current = false;
           }
@@ -578,6 +580,22 @@ export default function App() {
 
   const addAgentLog = (msg: string) => {
     setAgentLogs(prev => [...prev, msg]);
+  };
+
+  const isApiAuthError = (error: unknown): boolean => {
+    const msg = String(error);
+    const keywords = [
+      '401',
+      'UNAUTHENTICATED',
+      'ACCESS_TOKEN_TYPE_UNSUPPORTED',
+      'invalid authentication',
+      'API key',
+      'apiKey',
+      'API_KEY',
+      'authentication credential',
+      'not configured',
+    ];
+    return keywords.some(kw => msg.includes(kw));
   };
 
   const startNewCampaign = () => {
@@ -700,6 +718,7 @@ export default function App() {
   const handleAnalyzeMarkets = async () => {
     if (!productName) return;
     setIsAnalyzing(true);
+    setApiError(null);
     setSuggestions([]);
     setDeployedRegions(new Set());
     setSelectedLeadId(null);
@@ -756,6 +775,7 @@ export default function App() {
 
     } catch (e) {
       addAgentLog(`Analysis failed: ${e}`);
+      if (isApiAuthError(e)) setApiError(String(e));
     } finally {
       setIsAnalyzing(false);
       setAgentAction({ type: 'IDLE', details: '' });
@@ -800,6 +820,7 @@ export default function App() {
               return updated;
           });
           addAgentLog(`[Intel] Report generation failed for ${region}.`);
+          if (isApiAuthError(e)) setApiError(String(e));
       }
   };
 
@@ -1054,6 +1075,7 @@ export default function App() {
             addAgentLog(`[${scoutId}] Lane complete: ${qualifiedLeads.length} qualified${rejectedNote}, ${socialLeadCount} social-first leads found`);
           } catch (laneErr) {
             addAgentLog(`[${scoutId}] Lane failed: ${laneErr}. Continuing with remaining lanes.`);
+            if (isApiAuthError(laneErr)) setApiError(String(laneErr));
           }
         }
 
@@ -1103,6 +1125,7 @@ export default function App() {
 
     } catch (e) {
         addAgentLog(`[${scoutId}] Application-led discovery failed: ${e}. Falling back to direct search...`);
+        if (isApiAuthError(e)) setApiError(String(e));
         // Fall back to existing direct search
         try {
           setAgentAction({ type: 'SEARCHING', details: `Scouting ${region} via direct search...` });
@@ -1115,6 +1138,7 @@ export default function App() {
           addAgentLog(`[${scoutId}] Fallback search complete: ${newLeads.length} leads found${duplicates > 0 ? ` (${duplicates} duplicates)` : ''}.`);
         } catch (fallbackErr) {
           addAgentLog(`[${scoutId}] Fallback search also failed: ${fallbackErr}`);
+          if (isApiAuthError(fallbackErr)) setApiError(String(fallbackErr));
         }
     } finally {
         setAgentAction({ type: 'IDLE', details: 'Awaiting orders.' });
@@ -1629,9 +1653,37 @@ export default function App() {
         ) : (
             <>
                 <div className={`flex-1 ${selectedLead ? 'overflow-hidden' : 'overflow-y-auto p-4 md:p-6'} flex flex-col`}>
+                  {apiError && (
+                    <div className="mb-6 p-5 rounded-xl border-2 border-red-500/50 bg-red-950/40 text-center">
+                      <div className="flex items-center justify-center gap-2 mb-3">
+                        <span className="text-red-400 text-lg">⚠</span>
+                        <h3 className="text-red-300 font-bold text-base">API Authentication Error</h3>
+                      </div>
+                      <p className="text-red-200/80 text-sm mb-3 max-w-xl mx-auto leading-relaxed">
+                        The AI service is currently unavailable due to an invalid or expired API key. This affects all AI-powered features including market analysis, lead discovery, and prospecting.
+                      </p>
+                      <p className="text-white text-sm font-semibold mb-1">Please contact the developer for assistance:</p>
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-3">
+                        <a href="mailto:samuellukudu.sl20@gmail.com" className="inline-flex items-center gap-2 px-4 py-2 bg-red-600/30 hover:bg-red-600/50 border border-red-500/40 rounded-lg text-red-100 text-sm font-medium transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                          samuellukudu.sl20@gmail.com
+                        </a>
+                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-600/20 border border-green-500/40 rounded-lg text-green-100 text-sm font-medium">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                          +86 15621872132 (WeChat)
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setApiError(null)}
+                        className="mt-4 text-slate-400 hover:text-white text-xs underline underline-offset-2 transition-colors"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
                   {selectedLead ? (
-                     <InteractionViewer 
-                        lead={selectedLead} 
+                     <InteractionViewer
+                        lead={selectedLead}
                         productContext={searchContext || undefined}
                         onUpdateLead={handleLeadUpdate}
                      />
